@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "AlgoRecall",
+  "version": "1.0",
+  "description": "Scrape coding problems and save locally.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.leetcode.com/*",
+    "*://*.hackerrank.com/*",
+    "*://*.codeforces.com/*",
+    "*://takeuforward.org/*",
+    "*://neetcode.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.leetcode.com/*",
+        "*://*.hackerrank.com/*",
+        "*://*.codeforces.com/*",
+        "*://takeuforward.org/*",
+        "*://neetcode.io/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/dashboard/index.html",
+        "injected.js",
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:5173/*"
+    ]
+  }
+}
