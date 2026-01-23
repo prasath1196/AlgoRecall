@@ -10,7 +10,9 @@
   },
   "permissions": [
     "activeTab",
-    "scripting"
+    "activeTab",
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
     "*://*.leetcode.com/*",

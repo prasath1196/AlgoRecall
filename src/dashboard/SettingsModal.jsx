@@ -11,15 +11,29 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
         if (isOpen) {
             // Load from localStorage
             const saved = localStorage.getItem('ALGORECALL_SETTINGS');
+            let parsed = {};
             if (saved) {
                 try {
-                    const parsed = JSON.parse(saved);
-                    // Ensure defaults
-                    if (parsed.maxReviewsPerDay === undefined) parsed.maxReviewsPerDay = 0;
-                    setSettings(parsed);
+                    parsed = JSON.parse(saved);
                 } catch (e) {
                     console.error('Failed to parse settings', e);
                 }
+            }
+
+            // Also load from chrome.storage.local for extension-wide settings
+            if (chrome && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.get(['reminderFrequencyHours'], (result) => {
+                    // Ensure defaults
+                    if (parsed.maxReviewsPerDay === undefined) parsed.maxReviewsPerDay = 0;
+                    if (result.reminderFrequencyHours) parsed.reminderFrequencyHours = result.reminderFrequencyHours;
+                    else parsed.reminderFrequencyHours = 6; // Default if not set
+
+                    setSettings(parsed);
+                });
+            } else {
+                if (parsed.maxReviewsPerDay === undefined) parsed.maxReviewsPerDay = 0;
+                if (parsed.reminderFrequencyHours === undefined) parsed.reminderFrequencyHours = 6;
+                setSettings(parsed);
             }
         }
     }, [isOpen]);
@@ -27,6 +41,13 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
     const handleSave = () => {
         // Save to localStorage
         localStorage.setItem('ALGORECALL_SETTINGS', JSON.stringify(settings));
+
+        // Save extension-wide settings to chrome.storage.local
+        if (chrome && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({
+                reminderFrequencyHours: settings.reminderFrequencyHours
+            });
+        }
 
         // Notify parent to reload/apply
         onSave(settings);
@@ -71,6 +92,28 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
                             Limits how many problems you review in a single session. Overflow problems will remain in the backlog for tomorrow.
                             <br />
                             <span className="text-indigo-400/80">Set to 0 for unlimited reviews.</span>
+                        </p>
+                    </div>
+
+                    <div className="border-t border-gray-800 pt-6 space-y-3">
+                        <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                            <Zap size={16} className="text-gray-400" />
+                            Notification frequency
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <select
+                                value={settings.reminderFrequencyHours || 6}
+                                onChange={(e) => setSettings({ ...settings, reminderFrequencyHours: parseInt(e.target.value) })}
+                                className="bg-gray-950 border border-gray-700 text-white rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            >
+                                <option value="4">Every 4 Hours</option>
+                                <option value="6">Every 6 Hours (Default)</option>
+                                <option value="12">Every 12 Hours</option>
+                                <option value="24">Every 24 Hours</option>
+                            </select>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                            How often to remind you about due reviews when you visit a coding platform.
                         </p>
                     </div>
                 </div>

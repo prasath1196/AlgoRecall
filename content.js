@@ -193,7 +193,7 @@ function scrapeData(platform) {
     title = title.replace(' - NeetCode', '').replace('NeetCode', '').trim();
     // If title is just "NeetCode", try to find h1
     const h1 = document.querySelector('h1');
-    if (h1) title = h1.innerText;
+    if (h1 && (!title || title === "NeetCode")) title = h1.innerText;
   }
 
   const difficulty = getDifficulty(platform);
@@ -212,11 +212,6 @@ function scrapeData(platform) {
     if (viewLines) {
       code = viewLines.innerText;
     } else if (platform === 'Neetcode') {
-      // NeetCode likely uses Monaco too or CodeMirror
-      // If we intercepted the code payload, that will override this anyway.
-      // But for manual scrape (Popup), we need to read from DOM if possible.
-      // Assuming Monaco editor based on "view-line" selectors usually working.
-      // If NeetCode uses something else, likely CodeMirror:
       const cmContent = document.querySelector('.cm-content');
       if (cmContent) code = cmContent.innerText;
     }
@@ -240,9 +235,23 @@ function scrapeData(platform) {
     ? difficulty
     : 'Unknown';
 
+  let scrapedTitle = title || "Unknown Title";
+  const scrapedUrl = cleanUrl(window.location.href);
+
+  // Fallback: If title is generic or unknown, try to get it from the URL slug
+  if (!scrapedTitle || scrapedTitle === "Unknown Title" || scrapedTitle === "NeetCode" || scrapedTitle === "LeetCode") {
+    const slug = scrapedUrl.split('/problems/')[1]?.split('/')[0];
+    if (slug) {
+      scrapedTitle = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      console.log("AlgoRecall: Generated fallback title from slug:", scrapedTitle);
+    }
+  }
+
+  console.log('AlgoRecall: Raw Scrape:', { scrapedTitle, scrapedUrl, platform });
+
   return {
-    title: title,
-    url: cleanUrl(window.location.href),
+    title: scrapedTitle,
+    url: scrapedUrl,
     platform: platform, // Verified via detectPlatform call
     difficulty: finalDifficulty,
     pattern_tag: pattern_tag, // Filtered by logic
@@ -281,6 +290,9 @@ function handleSubmission() {
           console.error("AlgoRecall: Runtime error sending message", chrome.runtime.lastError);
         } else {
           console.log("AlgoRecall: Message sent to background", response);
+          if (response && response.status === 'success') {
+            showToast("Added to Recall.");
+          }
         }
       });
     } catch (e) {
@@ -331,6 +343,102 @@ window.addEventListener('message', (event) => {
   }
 });
 
+
+// Check for due reviews on load (with configurable frequency)
+function checkSessionStartReminder() {
+  const platform = detectPlatform();
+  if (!platform) return; // Only show on supported platforms
+
+  if (!chrome || !chrome.storage || !chrome.storage.local) {
+    console.warn("AlgoRecall: chrome.storage.local not available, skipping session check.");
+    return;
+  }
+
+  chrome.storage.local.get(['lastRemindedAt', 'reminderFrequencyHours'], (result) => {
+    const lastReminded = result.lastRemindedAt || 0;
+    const frequencyHours = result.reminderFrequencyHours || 6; // Default 6 hours
+    const now = Date.now();
+
+    // Check if enough time has passed (frequencyHours * 3600 * 1000 ms)
+    if (now - lastReminded < frequencyHours * 60 * 60 * 1000) {
+      console.log('AlgoRecall: Recently reminded, skipping toast.');
+      return;
+    }
+
+    chrome.runtime.sendMessage({ type: 'CHECK_DUE_REVIEWS' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn("AlgoRecall: Error checking due reviews", chrome.runtime.lastError);
+        return;
+      }
+
+      if (response && response.count > 0) {
+        const msg = `You have ${response.count} problem${response.count > 1 ? 's' : ''} due for review.`;
+        showToast(msg);
+
+        // Update last reminded time
+        chrome.storage.local.set({ lastRemindedAt: now });
+      }
+    });
+  });
+}
+
+// Run prompt check a bit after load
+setTimeout(checkSessionStartReminder, 2000);
+
+function showToast(message = "Added to Recall.") {
+  // Remove existing toast if any
+  const existingToast = document.getElementById('algorecall-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  const toast = document.createElement('div');
+  toast.id = 'algorecall-toast';
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #10b981; /* Emerald 500 */
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 10000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transform: translateY(100px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  `;
+
+  const dashboardUrl = chrome.runtime.getURL('src/dashboard/index.html');
+
+  toast.innerHTML = `
+    <span>${message}</span>
+    <a href="${dashboardUrl}" target="_blank" style="color: white; text-decoration: underline; font-weight: 700;">Check/View here</a>
+  `;
+
+  document.body.appendChild(toast);
+
+  // Animate in
+  setTimeout(() => {
+    toast.style.transform = 'translateY(0)';
+  }, 100);
+
+  // Remove after 5 seconds
+  setTimeout(() => {
+    toast.style.transform = 'translateY(100px)';
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.remove();
+      }
+    }, 300);
+  }, 5000);
+}
+
 function handleSubmissionWithCode(code, lang, timestamp, ai_summary) {
   const platform = detectPlatform();
   if (!platform || !ALLOWED_PLATFORMS.includes(platform)) return;
@@ -364,6 +472,9 @@ function handleSubmissionWithCode(code, lang, timestamp, ai_summary) {
         console.error("AlgoRecall: Runtime error sending message", chrome.runtime.lastError);
       } else {
         console.log("AlgoRecall: Message sent to background", response);
+        if (response && response.status === 'success') {
+          showToast("Added to Recall.");
+        }
       }
     });
   } catch (e) {

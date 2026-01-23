@@ -1,4 +1,4 @@
-import { saveProblem, openDB } from './db.js';
+import { saveProblem, openDB, getDueProblemsCount } from './db.js';
 
 // Initialize DB immediately so it shows up in DevTools
 openDB().then(() => console.log('AlgoRecall: DB Initialized')).catch(err => console.error('AlgoRecall: DB Init Failed', err));
@@ -14,6 +14,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ status: 'error', error: error.toString() });
         });
         return true; // Keep the message channel open for async response
+    }
+
+    if (message.type === 'CHECK_DUE_REVIEWS') {
+        getDueProblemsCount().then(count => {
+            sendResponse({ count });
+        }).catch(err => {
+            console.error('AlgoRecall: Error checking due reviews', err);
+            sendResponse({ count: 0 });
+        });
+        return true;
     }
 });
 

@@ -19,7 +19,9 @@ import {
     Settings,
     ArrowUpDown,
     ArrowUp,
-    ArrowDown
+    ArrowDown,
+    Eye,
+    EyeOff
 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import Toast from './Toast';
@@ -257,11 +259,84 @@ const ProgressBar = ({ value, max, color = "bg-green-500" }) => {
     );
 };
 
+const MasteryWidget = ({ stats, total }) => {
+    // Helper for percentage
+    const getPercent = (val) => total > 0 ? Math.round((val / total) * 100) : 0;
+
+    return (
+        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
+            <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
+                <TrendingUp size={16} /> Mastery Level
+            </h3>
+
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+                <div className="text-center">
+                    <div className="text-2xl font-bold text-white">{total}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-wide">Tracked</div>
+                </div>
+                <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-400">{stats.Mastered}</div>
+                    <div className="text-xs text-blue-400/70 uppercase tracking-wide">Mastered</div>
+                </div>
+                <div className="text-center">
+                    <div className="text-2xl font-bold text-indigo-400">
+                        {getPercent(stats.Mastered)}%
+                    </div>
+                    <div className="text-xs text-indigo-400/70 uppercase tracking-wide">Rate</div>
+                </div>
+            </div>
+            <div className="space-y-4">
+                <div>
+                    <div className="flex justify-between text-xs mb-1">
+                        <div className="flex items-center gap-1.5 text-blue-400">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            <span>Mastered</span>
+                        </div>
+                        <span className="text-gray-500">{stats.Mastered}</span>
+                    </div>
+                    <ProgressBar value={stats.Mastered} max={total} color="bg-blue-500" />
+                </div>
+                <div>
+                    <div className="flex justify-between text-xs mb-1">
+                        <div className="flex items-center gap-1.5 text-green-400">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span>Reviewing</span>
+                        </div>
+                        <span className="text-gray-500">{stats.Reviewing}</span>
+                    </div>
+                    <ProgressBar value={stats.Reviewing} max={total} color="bg-green-500" />
+                </div>
+                <div>
+                    <div className="flex justify-between text-xs mb-1">
+                        <div className="flex items-center gap-1.5 text-orange-400">
+                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                            <span>Learning</span>
+                        </div>
+                        <span className="text-gray-500">{stats.Learning}</span>
+                    </div>
+                    <ProgressBar value={stats.Learning} max={total} color="bg-orange-500" />
+                </div>
+                <div>
+                    <div className="flex justify-between text-xs mb-1">
+                        <div className="flex items-center gap-1.5 text-gray-400">
+                            <div className="w-2 h-2 rounded-full bg-gray-600"></div>
+                            <span>Unrated</span>
+                        </div>
+                        <span className="text-gray-500">{stats.Unrated}</span>
+                    </div>
+                    <ProgressBar value={stats.Unrated} max={total} color="bg-gray-600" />
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function App() {
     // --- STATE ---
     const [problems, setProblems] = useState([]);
     const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, list
     const [showAddModal, setShowAddModal] = useState(false);
+    const [currentView, setCurrentView] = useState('queue'); // 'queue' | 'library'
     const [reviewMode, setReviewMode] = useState(false);
     const [reviewQueue, setReviewQueue] = useState([]); // Array of URLs
     const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
@@ -273,6 +348,7 @@ export default function App() {
     // Edit Mode State for Code Modal
     const [isEditingProblem, setIsEditingProblem] = useState(false);
     const [editProblemData, setEditProblemData] = useState(null);
+    const [showModalCode, setShowModalCode] = useState(false);
 
     // Active Recall State
     const [userCode, setUserCode] = useState('');
@@ -886,12 +962,30 @@ export default function App() {
 
             {/* HEADER */}
             <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
-                <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-indigo-600 p-2 rounded-lg">
-                            <Brain size={20} className="text-white" />
+                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-indigo-600 p-2 rounded-lg">
+                                <Brain size={20} className="text-white" />
+                            </div>
+                            <span className="font-bold text-lg tracking-tight">AlgoRecall</span>
                         </div>
-                        <span className="font-bold text-lg tracking-tight">AlgoRecall</span>
+
+                        {/* VIEW TABS */}
+                        <div className="flex items-center bg-gray-900/50 p-1 rounded-lg border border-gray-800 ml-4">
+                            <button
+                                onClick={() => setCurrentView('queue')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${currentView === 'queue' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                <Clock size={14} /> Review Queue
+                            </button>
+                            <button
+                                onClick={() => setCurrentView('library')}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${currentView === 'library' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                            >
+                                <Code2 size={14} /> All Problems
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -915,459 +1009,475 @@ export default function App() {
             {/* MAIN CONTENT */}
             <main className="max-w-7xl mx-auto px-4 py-8">
 
-                {/* HERO: DUE FOR REVIEW */}
-                <div className="mb-8">
-                    <div className="bg-gray-900 rounded-2xl border border-gray-800 shadow-xl overflow-hidden relative group p-1">
-                        <div className="absolute top-0 right-0 p-8 text-gray-700 opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none">
-                            <Clock size={120} />
-                        </div>
-                        <div className="flex flex-col md:flex-row items-center justify-between p-6 md:p-8 gap-6 relative z-10">
-                            <div className="flex-1 text-center md:text-left">
-                                <h3 className="text-gray-400 font-medium mb-2 uppercase tracking-wide text-sm flex items-center justify-center md:justify-start gap-2">
-                                    <Clock size={16} /> Ready for Review
-                                </h3>
-                                <div className="flex items-baseline justify-center md:justify-start gap-3">
-                                    <span className="text-5xl md:text-6xl font-bold text-white tracking-tight">{dueProblems.length}</span>
-                                    <span className="text-lg text-gray-500 font-medium">problems need your attention</span>
-                                </div>
-                                {maxReviewsPerDay > 0 && (
-                                    <div className="mt-2 text-xs font-mono text-gray-500 bg-gray-950/50 inline-block px-2 py-1 rounded border border-gray-800">
-                                        <span className={remainingDailyAllowance <= 0 ? 'text-green-400' : 'text-indigo-400'}>
-                                            {todaysReviewCount}
-                                        </span>
-                                        <span className="opacity-50"> / {maxReviewsPerDay} today</span>
-                                    </div>
-                                )}
-                            </div>
 
-                            <div className="w-full md:w-auto min-w-[300px]">
-                                <button
-                                    onClick={() => {
-                                        if (dueProblems.length > 0) {
-                                            // CHECK DAILY LIMIT
-                                            if (remainingDailyAllowance <= 0) {
-                                                showToast(`Daily limit of ${maxReviewsPerDay} reviews reached! You're done for today.`, 'success');
-                                                return;
-                                            }
 
-                                            // Cap the queue based on remaining allowance
-                                            const queue = dueProblems.slice(0, remainingDailyAllowance).map(p => p.url);
-                                            setReviewQueue(queue);
-                                            setReviewMode(true);
-                                            setCurrentReviewIndex(0);
-                                            setIsAnswerRevealed(false);
-                                            setUserCode('');
-                                        } else if (nextUpcomingProblem) {
-                                            // CHECK DAILY LIMIT
-                                            if (remainingDailyAllowance <= 0) {
-                                                showToast(`Daily limit of ${maxReviewsPerDay} reviews reached! You're done for today.`, 'success');
-                                                return;
-                                            }
-
-                                            const nextDate = new Date(nextUpcomingProblem.next_review_at);
-                                            nextDate.setHours(23, 59, 59, 999);
-                                            const targetDate = nextDate.toISOString();
-                                            setReviewCutoff(targetDate);
-                                            const batch = problems.filter(p => p.next_review_at <= targetDate);
-
-                                            // CAP BATCH
-                                            const queue = batch.slice(0, remainingDailyAllowance).map(p => p.url);
-                                            setReviewQueue(queue);
-                                            setReviewMode(true);
-                                            setCurrentReviewIndex(0);
-                                            setIsAnswerRevealed(false);
-                                            setUserCode('');
-                                        }
-                                    }}
-                                    disabled={dueProblems.length === 0 && !nextUpcomingProblem}
-                                    className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 shadow-lg transform hover:-translate-y-1 active:scale-95
-                 ${dueProblems.length > 0
-                                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
-                                            : nextUpcomingProblem
-                                                ? 'bg-gray-800 hover:bg-gray-700 text-indigo-400 border border-indigo-500/30'
-                                                : 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-800'}`}
-                                >
-                                    {dueProblems.length > 0 ? (
-                                        <><Zap size={20} fill="currentColor" /> Start Review Session</>
-                                    ) : nextUpcomingProblem ? (
-                                        <><Calendar size={20} /> Review Upcoming ({new Date(nextUpcomingProblem.next_review_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})</>
-                                    ) : (
-                                        <><CheckCircle2 size={20} /> All Caught Up</>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* LEFT COLUMN: SIDEBAR (lg:col-span-1) */}
+                    {/* LEFT COLUMN: CONTEXT AWARE (lg:col-span-1) */}
                     <div className="lg:col-span-1 flex flex-col gap-6">
 
-                        {/* FILTERS SIDEBAR CARD */}
-                        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
-                            <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
-                                <Code2 size={16} /> Filters
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 font-medium ml-1">Pattern</label>
-                                    <select
-                                        value={filters.pattern}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, pattern: e.target.value }))}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    >
-                                        <option value="All">All Patterns</option>
-                                        {uniquePatterns.map(p => (
-                                            <option key={p} value={p}>{p}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                        {/* QUEUE VIEW: Consistency Logic */}
+                        {currentView === 'queue' && (
+                            <div className="space-y-6">
+                                {/* Mastery Widget */}
+                                <MasteryWidget stats={masteryStats} total={problems.length} />
 
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 font-medium ml-1">Difficulty</label>
-                                    <select
-                                        value={filters.difficulty}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    >
-                                        <option value="All">All Difficulties</option>
-                                        <option value="Easy">Easy</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Hard">Hard</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 font-medium ml-1">Platform</label>
-                                    <select
-                                        value={filters.platform}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, platform: e.target.value }))}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    >
-                                        <option value="All">All Platforms</option>
-                                        <option value="LeetCode">LeetCode</option>
-                                        <option value="Neetcode">Neetcode</option>
-                                        <option value="HackerRank">HackerRank</option>
-                                        <option value="Codeforces">Codeforces</option>
-                                        <option value="TUF">TUF</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 font-medium ml-1">Review Status</label>
-                                    <select
-                                        value={filters.status}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    >
-                                        <option value="All">All Status</option>
-                                        <option value="Due">Due for Review</option>
-                                        <option value="Scheduled">Scheduled</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs text-gray-500 font-medium ml-1">Mastery</label>
-                                    <select
-                                        value={filters.mastery}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, mastery: e.target.value }))}
-                                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
-                                    >
-                                        <option value="All">All Mastery</option>
-                                        <option value="Unrated">Unrated</option>
-                                        <option value="Learning">Learning</option>
-                                        <option value="Reviewing">Reviewing</option>
-                                        <option value="Mastered">Mastered 🚀</option>
-                                    </select>
+                                <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
+                                    <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
+                                        <Calendar size={16} /> Consistency
+                                    </h3>
+                                    {/* Heatmap (Fixed for Sidebar: Calendar Widget) */}
+                                    <CalendarWidget data={problems} />
                                 </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Mastery Breakdown */}
-                        <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
-                            <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
-                                <TrendingUp size={16} /> Mastery Level
-                            </h3>
-
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-white">{problems.length}</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Tracked</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-400">{masteryStats.Mastered}</div>
-                                    <div className="text-xs text-blue-400/70 uppercase tracking-wide">Mastered</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-indigo-400">
-                                        {Math.round((masteryStats.Mastered / (problems.length || 1)) * 100)}%
+                        {/* LIBRARY VIEW: Filters Logic */}
+                        {currentView === 'library' && (
+                            <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl">
+                                <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
+                                    <Code2 size={16} /> Filters
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500 font-medium ml-1">Pattern</label>
+                                        <select
+                                            value={filters.pattern}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, pattern: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="All">All Patterns</option>
+                                            {uniquePatterns.map(p => (
+                                                <option key={p} value={p}>{p}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <div className="text-xs text-indigo-400/70 uppercase tracking-wide">Rate</div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500 font-medium ml-1">Difficulty</label>
+                                        <select
+                                            value={filters.difficulty}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="All">All Difficulties</option>
+                                            <option value="Easy">Easy</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="Hard">Hard</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500 font-medium ml-1">Platform</label>
+                                        <select
+                                            value={filters.platform}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, platform: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="All">All Platforms</option>
+                                            <option value="LeetCode">LeetCode</option>
+                                            <option value="Neetcode">Neetcode</option>
+                                            <option value="HackerRank">HackerRank</option>
+                                            <option value="Codeforces">Codeforces</option>
+                                            <option value="TUF">TUF</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500 font-medium ml-1">Review Status</label>
+                                        <select
+                                            value={filters.status}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="All">All Status</option>
+                                            <option value="Due">Due for Review</option>
+                                            <option value="Scheduled">Scheduled</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs text-gray-500 font-medium ml-1">Mastery</label>
+                                        <select
+                                            value={filters.mastery}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, mastery: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="All">All Mastery</option>
+                                            <option value="Unrated">Unrated</option>
+                                            <option value="Learning">Learning</option>
+                                            <option value="Reviewing">Reviewing</option>
+                                            <option value="Mastered">Mastered 🚀</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <div className="flex items-center gap-1.5 text-blue-400">
-                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                            <span>Mastered</span>
-                                        </div>
-                                        <span className="text-gray-500">{masteryStats.Mastered}</span>
-                                    </div>
-                                    <ProgressBar value={masteryStats.Mastered} max={problems.length} color="bg-blue-500" />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <div className="flex items-center gap-1.5 text-green-400">
-                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                            <span>Reviewing</span>
-                                        </div>
-                                        <span className="text-gray-500">{masteryStats.Reviewing}</span>
-                                    </div>
-                                    <ProgressBar value={masteryStats.Reviewing} max={problems.length} color="bg-green-500" />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <div className="flex items-center gap-1.5 text-orange-400">
-                                            <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                            <span>Learning</span>
-                                        </div>
-                                        <span className="text-gray-500">{masteryStats.Learning}</span>
-                                    </div>
-                                    <ProgressBar value={masteryStats.Learning} max={problems.length} color="bg-orange-500" />
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <div className="flex items-center gap-1.5 text-gray-400">
-                                            <div className="w-2 h-2 rounded-full bg-gray-600"></div>
-                                            <span>Unrated</span>
-                                        </div>
-                                        <span className="text-gray-500">{masteryStats.Unrated}</span>
-                                    </div>
-                                    <ProgressBar value={masteryStats.Unrated} max={problems.length} color="bg-gray-600" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Heatmap (Fixed for Sidebar: Calendar Widget) */}
-                        <CalendarWidget data={problems} />
+                        )}
 
                     </div>
 
-                    {/* RIGHT COLUMN: FILTERS & TABLE (lg:col-span-3) */}
+                    {/* RIGHT COLUMN */}
                     <div className="lg:col-span-3 flex flex-col gap-6">
 
-                        {/* FILTER BAR - Search Only */}
-                        <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <div className="flex-1 relative w-full">
-                                <Code2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="Search problem title or tags..."
-                                    value={filters.search}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                    className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-indigo-500 outline-none"
-                                />
-                            </div>
-                        </div>
+                        {/* QUEUE VIEW */}
+                        {currentView === 'queue' && (
+                            <div className="space-y-8">
+                                {/* DUE NOW SECTION (HERO) */}
+                                {/* DUE NOW SECTION (HERO) - Only show if there are problems due */}
+                                {console.log('DEBUG: dueProblems length:', dueProblems.length)}
 
-                        {/* PROBLEM LIST */}
-                        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-900 border-b border-gray-800 text-gray-400 font-medium select-none">
-                                        <tr>
-                                            {[
-                                                { label: 'Problem', key: 'title', className: 'pl-6' },
-                                                { label: 'Pattern', key: 'pattern' },
-                                                { label: 'Added', key: 'created_at' },
-                                                { label: 'Next Review', key: 'next_review_at' },
-                                                { label: 'Interval', key: 'interval' },
-                                                { label: 'Mastery', key: 'mastery' },
-                                                { label: 'Status', key: 'status' }
-                                            ].map(col => {
-                                                const sortState = sortConfig.find(s => s.key === col.key);
-                                                const sortIndex = sortConfig.findIndex(s => s.key === col.key);
+                                {/* SPLIT STATE LOGIC */}
+                                {dueProblems.length > 0 ? (
+                                    /* STATE A: ACTIVE (Problems Due) */
+                                    <div className="bg-gray-900 rounded-2xl border border-gray-800 shadow-xl p-8 mb-6 flex flex-col items-center justify-center text-center">
+                                        <div className="bg-indigo-500/10 p-4 rounded-full mb-4">
+                                            <Zap size={32} className="text-indigo-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2">Ready for Review</h2>
+                                        <p className="text-gray-400 mb-6 text-lg">
+                                            You have <span className="text-indigo-400 font-bold">{dueProblems.length}</span> problems due today.
+                                        </p>
 
-                                                return (
-                                                    <th
-                                                        key={col.key}
-                                                        className={`p-4 cursor-pointer hover:text-indigo-400 transition-colors ${col.className || ''}`}
-                                                        onClick={(e) => handleSort(col.key, e)}
-                                                    >
-                                                        <div className="flex items-center gap-1">
-                                                            {col.label}
-                                                            {sortState ? (
-                                                                <div className="flex items-center text-indigo-500">
-                                                                    {sortState.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                                                                    {sortConfig.length > 1 && <span className="text-[10px] ml-0.5">{sortIndex + 1}</span>}
-                                                                </div>
-                                                            ) : (
-                                                                <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-50 transition-opacity" />
-                                                            )}
+                                        <button
+                                            onClick={() => {
+                                                if (remainingDailyAllowance <= 0) {
+                                                    showToast(`Daily limit of ${maxReviewsPerDay} reviews reached!`, 'success');
+                                                    return;
+                                                }
+                                                const queue = dueProblems.slice(0, remainingDailyAllowance).map(p => p.url);
+                                                setReviewQueue(queue);
+                                                setReviewMode(true);
+                                                setCurrentReviewIndex(0);
+                                                setIsAnswerRevealed(false);
+                                                setUserCode('');
+                                            }}
+                                            className="px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2"
+                                        >
+                                            <Play size={20} fill="currentColor" /> Start Recall Session
+                                        </button>
+                                        <div className="mt-4 text-xs text-gray-500 font-medium">Daily Limit: <span className="text-gray-300">{todaysReviewCount}</span> / {maxReviewsPerDay} reviews completed</div>
+                                    </div>
+                                ) : (
+                                    /* STATE B: ZERO STATE (All Caught Up) */
+                                    <div className="bg-gray-900 rounded-2xl border border-gray-800 shadow-xl p-8 mb-6 flex flex-col items-center justify-center text-center">
+                                        <div className="bg-green-500/10 p-4 rounded-full mb-4">
+                                            <CheckCircle2 size={32} className="text-green-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2">All Caught Up!</h2>
+                                        <p className="text-gray-400 mb-6 text-lg">
+                                            Great job! You've completed all your reviews for now.
+                                        </p>
+
+                                        <button
+                                            onClick={() => {
+                                                // Review Upcoming Logic
+                                                if (remainingDailyAllowance <= 0) {
+                                                    showToast(`Daily limit of ${maxReviewsPerDay} reviews reached!`, 'success');
+                                                    return;
+                                                }
+                                                const nextDate = new Date(nextUpcomingProblem.next_review_at);
+                                                nextDate.setHours(23, 59, 59, 999);
+                                                const targetDate = nextDate.toISOString();
+                                                setReviewCutoff(targetDate);
+                                                const batch = problems.filter(p => p.next_review_at <= targetDate);
+                                                const queue = batch.slice(0, remainingDailyAllowance).map(p => p.url);
+                                                setReviewQueue(queue);
+                                                setReviewMode(true);
+                                                setCurrentReviewIndex(0);
+                                                setIsAnswerRevealed(false);
+                                                setUserCode('');
+                                            }}
+                                            disabled={!nextUpcomingProblem}
+                                            className="px-8 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-lg border border-gray-700 hover:border-gray-600 transition-all transform hover:-translate-y-0.5 active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <Calendar size={20} /> Recall Upcoming
+                                        </button>
+                                        <div className="mt-4 text-xs text-gray-500 font-medium">Daily Limit: <span className="text-gray-300">{todaysReviewCount}</span> / {maxReviewsPerDay} reviews completed</div>
+                                    </div>
+                                )}
+
+                                {/* LIST PROBLEM SECTION - Only if > 0 */}
+                                {dueProblems.length > 0 && (
+                                    <div className="grid gap-3">
+                                        {dueProblems.map(problem => (
+                                            <div
+                                                key={problem.url}
+                                                className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex items-center justify-between hover:border-gray-700 hover:bg-gray-800/30 transition-all cursor-pointer group"
+                                                onClick={() => {
+                                                    setCodeModalData(problem);
+                                                    setIsEditingProblem(false);
+                                                    setShowModalCode(false);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-2 h-2 rounded-full ${problem.difficulty === 'Easy' ? 'bg-green-500' : problem.difficulty === 'Medium' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                                                    <div>
+                                                        <div className="font-medium text-white group-hover:text-indigo-400 transition-colors">{problem.title}</div>
+                                                        <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                                            <span>{problem.platform}</span>
+                                                            <span>•</span>
+                                                            <span>Interval: {problem.interval}d</span>
                                                         </div>
-                                                    </th>
-                                                )
-                                            })}
-                                            <th className="p-4 text-right pr-6">Code</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-800/50">
-                                        {paginatedProblems.length === 0 ? (
-                                            <tr>
-                                                <td colSpan="8" className="p-8 text-center text-gray-500">
-                                                    No problems match your filters.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            paginatedProblems.map(problem => {
-                                                const isDue = problem.next_review_at <= new Date().toISOString();
-                                                const lastHistory = problem.review_history && problem.review_history.length > 0
-                                                    ? problem.review_history[problem.review_history.length - 1]
-                                                    : null;
-                                                const lastQuality = lastHistory ? lastHistory.quality : null;
+                                                    </div>
+                                                </div>
+                                                <button className="p-2 bg-gray-800 hover:bg-indigo-600 rounded-lg text-gray-400 hover:text-white transition-colors">
+                                                    <Clock size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
-                                                return (
-                                                    <tr key={problem.url} className="hover:bg-gray-800/50 transition-colors group">
-                                                        <td className="p-4 pl-6">
-                                                            <div className="font-medium text-white flex items-center gap-2">
-                                                                <a href={problem.url} target="_blank" rel="noreferrer" className="hover:text-indigo-400 hover:underline decoration-indigo-400/50 underline-offset-4">
-                                                                    {problem.title}
-                                                                </a>
-                                                            </div>
-                                                            <div className="text-xs text-gray-500 mt-1 flex gap-2">
-                                                                <span className={`${problem.difficulty === 'Easy' ? 'text-green-500' :
-                                                                    problem.difficulty === 'Medium' ? 'text-yellow-500' : 'text-red-500'
-                                                                    }`}>{problem.difficulty}</span>
-                                                                <span>•</span>
-                                                                <span>{problem.platform}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            {Array.isArray(problem.pattern_tag) ? problem.pattern_tag.map(tag => (
-                                                                <span key={tag} className="inline-flex items-center px-2 py-1 rounded-md bg-gray-800 text-gray-300 text-xs border border-gray-700 mr-1">
-                                                                    {tag}
-                                                                </span>
-                                                            )) : (
-                                                                <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-800 text-gray-300 text-xs border border-gray-700">
-                                                                    {problem.pattern_tag || 'Uncategorized'}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 text-gray-400 text-xs">
-                                                            {problem.created_at ? formatDate(problem.created_at) : '-'}
-                                                        </td>
-                                                        <td className="p-4 text-gray-400">
-                                                            {isDue && problem.repetition_count > 0 ? (
-                                                                <span className="text-orange-400 font-medium flex items-center gap-1">
-                                                                    Today
-                                                                </span>
-                                                            ) : isDue && problem.repetition_count === 0 ? (
-                                                                <span className="text-blue-400 font-medium">New</span>
-                                                            ) : (
-                                                                formatDate(problem.next_review_at)
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 text-gray-500 font-mono text-xs">
-                                                            {problem.interval} days
-                                                        </td>
+                                {/* TOMORROW / UPCOMING */}
+                                <div>
+                                    <h3 className="text-white text-lg font-bold mb-4 flex items-center gap-2 mt-8">
+                                        <span className="w-2 h-2 bg-gray-600 rounded-full"></span>
+                                        Upcoming
+                                    </h3>
 
-                                                        {/* MASTERY COLUMN */}
-                                                        <td className="p-4">
-                                                            <div className="flex items-center gap-0.5" title={`Last Rating: ${lastQuality !== null ? lastQuality : 'N/A'}/5`}>
-                                                                {[1, 2, 3, 4, 5].map(i => {
-                                                                    let color = 'bg-gray-800';
-                                                                    if (lastQuality !== null && i <= lastQuality) {
-                                                                        if (lastQuality <= 3) color = 'bg-orange-500';
-                                                                        else if (lastQuality === 4) color = 'bg-green-500';
-                                                                        else if (lastQuality === 5) color = 'bg-blue-500';
-                                                                    }
-                                                                    return (
-                                                                        <div key={i} className={`w-1.5 h-3 rounded-sm ${color} transition-colors`}></div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                            {lastQuality === null && <span className="text-[10px] text-gray-600">Unrated</span>}
-                                                        </td>
+                                    {/* Simple grouping for "Upcoming" (Next 7 days roughly) */}
+                                    <div className="grid gap-3">
+                                        {problems
+                                            .filter(p => p.next_review_at > reviewCutoff)
+                                            .sort((a, b) => new Date(a.next_review_at) - new Date(b.next_review_at))
+                                            .slice(0, 5) // Show top 5 upcoming
+                                            .map(problem => (
+                                                <div
+                                                    key={problem.url}
+                                                    className="bg-gray-900/50 p-4 rounded-xl border border-gray-800 flex items-center justify-between opacity-70 hover:opacity-100 transition-opacity cursor-pointer text-sm"
+                                                    onClick={() => {
+                                                        setCodeModalData(problem);
+                                                        setIsEditingProblem(false);
+                                                        setShowModalCode(false);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-gray-500 font-mono text-xs w-16 text-right">
+                                                            {new Date(problem.next_review_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-300">{problem.title}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        }
+                                        {problems.filter(p => p.next_review_at > reviewCutoff).length === 0 && (
+                                            <div className="text-gray-500 text-sm italic p-4">No upcoming reviews scheduled.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                                                        <td className="p-4">
-                                                            {isDue ? (
-                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
-                                                                    Due
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                                                                    Scheduled
-                                                                </span>
-                                                            )}
-                                                        </td>
+                        {/* LIBRARY VIEW */}
+                        {currentView === 'library' && (
+                            <>
+                                {/* FILTER BAR - Search Only */}
+                                <div className="bg-gray-900 p-4 rounded-xl border border-gray-800 flex flex-col md:flex-row gap-4 items-center justify-between">
+                                    <div className="flex-1 relative w-full">
+                                        <Code2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search problem title or tags..."
+                                            value={filters.search}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                                            className="w-full bg-gray-950 border border-gray-800 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
 
-                                                        <td className="p-4 text-right pr-6">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    // Pass FULL problem object for editing context
-                                                                    setCodeModalData(problem);
-                                                                    setIsEditingProblem(false); // Reset edit mode
-                                                                }}
-                                                                className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-indigo-400 transition-colors"
-                                                                title="View Saved Code"
+                                {/* PROBLEM LIST */}
+                                <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-900 border-b border-gray-800 text-gray-400 font-medium select-none">
+                                                <tr>
+                                                    {[
+                                                        { label: 'Problem', key: 'title', className: 'pl-6' },
+                                                        { label: 'Pattern', key: 'pattern' },
+                                                        { label: 'Added', key: 'created_at' },
+                                                        { label: 'Next Review', key: 'next_review_at' },
+                                                        { label: 'Interval', key: 'interval' },
+                                                        { label: 'Mastery', key: 'mastery' },
+                                                        { label: 'Status', key: 'status' }
+                                                    ].map(col => {
+                                                        const sortState = sortConfig.find(s => s.key === col.key);
+                                                        const sortIndex = sortConfig.findIndex(s => s.key === col.key);
+
+                                                        return (
+                                                            <th
+                                                                key={col.key}
+                                                                className={`p-4 cursor-pointer hover:text-indigo-400 transition-colors ${col.className || ''}`}
+                                                                onClick={(e) => handleSort(col.key, e)}
                                                             >
-                                                                <Code2 size={16} />
-                                                            </button>
+                                                                <div className="flex items-center gap-1">
+                                                                    {col.label}
+                                                                    {sortState ? (
+                                                                        <div className="flex items-center text-indigo-500">
+                                                                            {sortState.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                                                                            {sortConfig.length > 1 && <span className="text-[10px] ml-0.5">{sortIndex + 1}</span>}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-50 transition-opacity" />
+                                                                    )}
+                                                                </div>
+                                                            </th>
+                                                        )
+                                                    })}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-800/50">
+                                                {paginatedProblems.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan="8" className="p-8 text-center text-gray-500">
+                                                            No problems match your filters.
                                                         </td>
                                                     </tr>
-                                                );
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                ) : (
+                                                    paginatedProblems.map(problem => {
+                                                        const isDue = problem.next_review_at <= new Date().toISOString();
+                                                        const lastHistory = problem.review_history && problem.review_history.length > 0
+                                                            ? problem.review_history[problem.review_history.length - 1]
+                                                            : null;
+                                                        const lastQuality = lastHistory ? lastHistory.quality : null;
 
-                            {/* PAGINATION CONTROLS */}
-                            <div className="border-t border-gray-800 p-4 flex items-center justify-between bg-gray-900">
-                                <div className="text-xs text-gray-500">
-                                    Showing <span className="text-gray-300">{(pagination.currentPage - 1) * pagination.itemsPerPage + 1}</span> to <span className="text-gray-300">{Math.min(pagination.currentPage * pagination.itemsPerPage, filteredProblems.length)}</span> of <span className="text-gray-300">{filteredProblems.length}</span> results
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        disabled={pagination.currentPage === 1}
-                                        onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-                                        className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent"
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                    <div className="flex items-center gap-1">
-                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                            // Simple pagination logic for now (first 5 or window)
-                                            // For robustness, just showing current page is safer if complex
-                                            let p = i + 1;
-                                            if (totalPages > 5 && pagination.currentPage > 3) {
-                                                p = pagination.currentPage - 2 + i;
-                                            }
-                                            if (p > totalPages) return null;
+                                                        return (
+                                                            <tr
+                                                                key={problem.url}
+                                                                className="hover:bg-gray-800/50 transition-colors group cursor-pointer"
+                                                                onClick={() => {
+                                                                    setCodeModalData(problem);
+                                                                    setIsEditingProblem(false);
+                                                                    setShowModalCode(false);
+                                                                }}
+                                                            >
+                                                                <td className="p-4 pl-6">
+                                                                    <div className="font-medium text-white flex items-center gap-2">
+                                                                        <div className="hover:text-indigo-400 transition-colors">
+                                                                            {problem.title}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500 mt-1 flex gap-2">
+                                                                        <span className={`${problem.difficulty === 'Easy' ? 'text-green-500' :
+                                                                            problem.difficulty === 'Medium' ? 'text-yellow-500' : 'text-red-500'
+                                                                            }`}>{problem.difficulty}</span>
+                                                                        <span>•</span>
+                                                                        <span>{problem.platform}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-4">
+                                                                    {Array.isArray(problem.pattern_tag) ? problem.pattern_tag.map(tag => (
+                                                                        <span key={tag} className="inline-flex items-center px-2 py-1 rounded-md bg-gray-800 text-gray-300 text-xs border border-gray-700 mr-1">
+                                                                            {tag}
+                                                                        </span>
+                                                                    )) : (
+                                                                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-800 text-gray-300 text-xs border border-gray-700">
+                                                                            {problem.pattern_tag || 'Uncategorized'}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="p-4 text-gray-400 text-xs">
+                                                                    {problem.created_at ? formatDate(problem.created_at) : '-'}
+                                                                </td>
+                                                                <td className="p-4 text-gray-400">
+                                                                    {isDue && problem.repetition_count > 0 ? (
+                                                                        <span className="text-orange-400 font-medium flex items-center gap-1">
+                                                                            Today
+                                                                        </span>
+                                                                    ) : isDue && problem.repetition_count === 0 ? (
+                                                                        <span className="text-blue-400 font-medium">New</span>
+                                                                    ) : (
+                                                                        formatDate(problem.next_review_at)
+                                                                    )}
+                                                                </td>
+                                                                <td className="p-4 text-gray-500 font-mono text-xs">
+                                                                    {problem.interval} days
+                                                                </td>
 
-                                            return (
-                                                <button
-                                                    key={p}
-                                                    onClick={() => setPagination(prev => ({ ...prev, currentPage: p }))}
-                                                    className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${pagination.currentPage === p ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-800'}`}
-                                                >
-                                                    {p}
-                                                </button>
-                                            );
-                                        })}
+                                                                {/* MASTERY COLUMN */}
+                                                                <td className="p-4">
+                                                                    <div className="flex items-center gap-0.5" title={`Last Rating: ${lastQuality !== null ? lastQuality : 'N/A'}/5`}>
+                                                                        {[1, 2, 3, 4, 5].map(i => {
+                                                                            let color = 'bg-gray-800';
+                                                                            if (lastQuality !== null && i <= lastQuality) {
+                                                                                if (lastQuality <= 3) color = 'bg-orange-500';
+                                                                                else if (lastQuality === 4) color = 'bg-green-500';
+                                                                                else if (lastQuality === 5) color = 'bg-blue-500';
+                                                                            }
+                                                                            return (
+                                                                                <div key={i} className={`w-1.5 h-3 rounded-sm ${color} transition-colors`}></div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                    {lastQuality === null && <span className="text-[10px] text-gray-600">Unrated</span>}
+                                                                </td>
+
+                                                                <td className="p-4">
+                                                                    {isDue ? (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                                                            Due
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                                                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                                                            Scheduled
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+
+                                                            </tr>
+                                                        );
+                                                    })
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <button
-                                        disabled={pagination.currentPage === totalPages || totalPages === 0}
-                                        onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-                                        className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
+
+                                    {/* PAGINATION CONTROLS */}
+                                    <div className="border-t border-gray-800 p-4 flex items-center justify-between bg-gray-900">
+                                        <div className="text-xs text-gray-500">
+                                            Showing <span className="text-gray-300">{(pagination.currentPage - 1) * pagination.itemsPerPage + 1}</span> to <span className="text-gray-300">{Math.min(pagination.currentPage * pagination.itemsPerPage, filteredProblems.length)}</span> of <span className="text-gray-300">{filteredProblems.length}</span> results
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                disabled={pagination.currentPage === 1}
+                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
+                                                className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </button>
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                                    // Simple pagination logic for now (first 5 or window)
+                                                    // For robustness, just showing current page is safer if complex
+                                                    let p = i + 1;
+                                                    if (totalPages > 5 && pagination.currentPage > 3) {
+                                                        p = pagination.currentPage - 2 + i;
+                                                    }
+                                                    if (p > totalPages) return null;
+
+                                                    return (
+                                                        <button
+                                                            key={p}
+                                                            onClick={() => setPagination(prev => ({ ...prev, currentPage: p }))}
+                                                            className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${pagination.currentPage === p ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-800'}`}
+                                                        >
+                                                            {p}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <button
+                                                disabled={pagination.currentPage === totalPages || totalPages === 0}
+                                                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
+                                                className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 disabled:opacity-30 disabled:hover:bg-transparent"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
 
 
@@ -1510,10 +1620,32 @@ export default function App() {
                                 </details>
                             )}
 
-                            <div className="bg-gray-950 p-4 rounded-lg border border-gray-800 overflow-x-auto max-h-[60vh]">
-                                <pre className="font-mono text-sm text-gray-300 whitespace-pre">
-                                    {codeModalData?.code || '// No code captured'}
-                                </pre>
+                            <div className="bg-gray-950 p-4 rounded-lg border border-gray-800 overflow-x-auto max-h-[60vh] relative group">
+                                {showModalCode ? (
+                                    <>
+                                        <pre className="font-mono text-sm text-gray-300 whitespace-pre">
+                                            {codeModalData?.code || '// No code captured'}
+                                        </pre>
+                                        <button
+                                            onClick={() => setShowModalCode(false)}
+                                            className="absolute top-2 right-2 p-1.5 bg-gray-800/80 hover:bg-gray-700 text-gray-400 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Hide Code"
+                                        >
+                                            <EyeOff size={16} />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-3">
+                                        <Code2 size={48} className="opacity-20" />
+                                        <p>Solution Hidden</p>
+                                        <button
+                                            onClick={() => setShowModalCode(true)}
+                                            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-indigo-400 border border-indigo-500/30 rounded-lg transition-colors flex items-center gap-2"
+                                        >
+                                            <Eye size={16} /> Reveal Solution
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex justify-between mt-4">
                                 <div className="text-gray-500 text-xs max-h-32 overflow-y-auto w-1/2">
