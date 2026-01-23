@@ -26,7 +26,14 @@
     </button>
 
     
-    <div class="space-y-3">
+    <!-- TABS -->
+    <div class="flex border-b border-gray-800 mb-4">
+        <button id="tabBtnSave" class="flex-1 pb-2 text-xs font-medium text-indigo-400 border-b-2 border-indigo-500 transition-colors">Save Problem</button>
+        <button id="tabBtnReview" class="flex-1 pb-2 text-xs font-medium text-gray-500 hover:text-gray-300 border-b-2 border-transparent transition-colors">Daily Review</button>
+    </div>
+
+    <!-- TAB CONTENT: SAVE -->
+    <div id="tabSave" class="space-y-3">
         <!-- Title Input -->
         <div class="space-y-1">
             <label for="title" class="block text-[10px] uppercase tracking-wider font-semibold text-gray-500">Problem Title</label>
@@ -95,9 +102,38 @@
                 <span>Add for Recall</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-70 group-hover:translate-x-0.5 transition-transform"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
             </button>
+        </div>
+    </div>
+
+    <!-- TAB CONTENT: REVIEW (Hidden by Default) -->
+    <div id="tabReview" class="hidden">
+        <!-- Review Card -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 p-4 shadow-lg shadow-indigo-500/10 mb-2">
             
+            <!-- Card Header -->
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800/50">
+                <h3 class="text-white font-bold text-sm">Today's Reviews</h3>
+                <span id="dueCountBadge" class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-medium">0 Due</span>
+            </div>
+
+            <!-- List -->
+            <ul id="reviewList" class="space-y-2 mb-4">
+                <!-- Items injected by JS -->
+                <li class="text-[10px] text-gray-500 text-center py-2">Loading...</li>
+            </ul>
+
+            <!-- Button -->
+            <button id="startSessionBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] text-xs">
+                Start Review Session
+            </button>
         </div>
+        
+        <div class="text-center">
+            <p class="text-[10px] text-gray-600">
+                Data stored locally &bull; <a href="#" id="openDashboardLink" class="text-indigo-400 hover:underline">Full Dashboard</a>
+            </p>
         </div>
+    </div>
     </div>
 
 

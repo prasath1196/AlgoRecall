@@ -13,8 +13,16 @@ import {
     ChevronLeft,
     ChevronRight,
     Pencil,
-    Save
+    Save,
+    Shield,
+    Lock,
+    Settings,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown
 } from 'lucide-react';
+import SettingsModal from './SettingsModal';
+import Toast from './Toast';
 import { getAllProblems, saveProblem } from '../../db.js';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs/components/prism-core';
@@ -272,6 +280,50 @@ export default function App() {
     const [comparisonTab, setComparisonTab] = useState('saved'); // 'saved' | 'mine'
     const [editedNotes, setEditedNotes] = useState(''); // Local state for editable notes
 
+    // Settings State
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [maxReviewsPerDay, setMaxReviewsPerDay] = useState(() => {
+        const saved = localStorage.getItem('ALGORECALL_SETTINGS');
+        return saved ? (JSON.parse(saved).maxReviewsPerDay || 0) : 0;
+    });
+
+    const [toast, setToast] = useState({ message: '', type: 'info', isVisible: false });
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type, isVisible: true });
+    };
+
+    const [sortConfig, setSortConfig] = useState([{ key: 'created_at', direction: 'desc' }]);
+
+    const handleSort = (key, event) => {
+        setSortConfig(prev => {
+            const isShift = event?.shiftKey;
+            const existingIndex = prev.findIndex(s => s.key === key);
+
+            if (!isShift) {
+                // Single Sort Mode: Replace entire config
+                let newDirection = 'asc';
+                if (prev.length === 1 && prev[0].key === key) {
+                    newDirection = prev[0].direction === 'asc' ? 'desc' : 'asc';
+                }
+                return [{ key, direction: newDirection }];
+            }
+
+            // Multi Sort Mode (Shift+Click)
+            const next = [...prev];
+            if (existingIndex >= 0) {
+                // Toggle direction if exists
+                next[existingIndex] = {
+                    key,
+                    direction: next[existingIndex].direction === 'asc' ? 'desc' : 'asc'
+                };
+            } else {
+                // Append new key
+                next.push({ key, direction: 'asc' });
+            }
+            return next;
+        });
+    };
+
     // --- INITIALIZATION ---
     const loadData = async () => {
         try {
@@ -317,8 +369,9 @@ export default function App() {
             await saveProblem(newProblem);
             await loadData(); // Reload from DB
             setShowAddModal(false);
+            showToast('Problem saved successfully', 'success');
         } catch (e) {
-            alert('Error saving problem: ' + e.message);
+            showToast('Error saving problem: ' + e.message, 'error');
         }
     };
 
@@ -436,7 +489,7 @@ export default function App() {
             // Status
             if (filters.status === 'Due') {
                 if (p.next_review_at > reviewCutoff) return false;
-            } else if (filters.status === 'Completed') {
+            } else if (filters.status === 'Scheduled') {
                 if (p.next_review_at <= reviewCutoff) return false;
             }
 
@@ -460,12 +513,53 @@ export default function App() {
         });
     }, [problems, filters, reviewCutoff]);
 
+    // --- SORTING LOGIC ---
+    const sortedProblems = useMemo(() => {
+        let sortable = [...filteredProblems];
+        if (sortConfig.length > 0) {
+            sortable.sort((a, b) => {
+                for (const sort of sortConfig) {
+                    let aVal, bVal;
+                    const { key, direction } = sort;
+
+                    // Value Extractors
+                    if (key === 'pattern') {
+                        const getTag = (p) => Array.isArray(p.pattern_tag) ? (p.pattern_tag[0] || '') : (p.pattern_tag || '');
+                        aVal = getTag(a).toLowerCase();
+                        bVal = getTag(b).toLowerCase();
+                    } else if (key === 'mastery') {
+                        const getRating = (p) => p.review_history && p.review_history.length > 0 ? p.review_history[p.review_history.length - 1].quality : -1;
+                        aVal = getRating(a);
+                        bVal = getRating(b);
+                    } else if (key === 'status') {
+                        aVal = a.next_review_at;
+                        bVal = b.next_review_at;
+                    } else {
+                        // Default string/number props
+                        aVal = a[key];
+                        bVal = b[key];
+
+                        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                    }
+
+                    if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                    if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                    // If equal, continue to next sort key
+                }
+                return 0;
+            });
+        }
+        return sortable;
+    }, [filteredProblems, sortConfig]);
+
+
     // --- PAGINATION LOGIC ---
-    const totalPages = Math.ceil(filteredProblems.length / pagination.itemsPerPage);
+    const totalPages = Math.ceil(sortedProblems.length / pagination.itemsPerPage);
     const paginatedProblems = useMemo(() => {
         const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
-        return filteredProblems.slice(start, start + pagination.itemsPerPage);
-    }, [filteredProblems, pagination]);
+        return sortedProblems.slice(start, start + pagination.itemsPerPage);
+    }, [sortedProblems, pagination]);
 
     // Reset page on filter change
     useEffect(() => {
@@ -505,7 +599,19 @@ export default function App() {
         return stats;
     }, [problems]);
 
+    // DAILY LIMIT LOGIC
+    const todaysReviewCount = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        let count = 0;
+        problems.forEach(p => {
+            if (p.review_history && Array.isArray(p.review_history)) {
+                count += p.review_history.filter(h => h.date.startsWith(todayStr)).length;
+            }
+        });
+        return count;
+    }, [problems]);
 
+    const remainingDailyAllowance = maxReviewsPerDay === 0 ? Infinity : Math.max(0, maxReviewsPerDay - todaysReviewCount);
 
     // --- RENDER HELPERS ---
     // Ensure we find the problem from the main list so we have fresh state if needed, 
@@ -596,9 +702,21 @@ export default function App() {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
                             >
-                                View Problem <Code2 size={14} />
+                                Problem Link <Code2 size={14} />
                             </a>
                         </div>
+
+                        {/* Problem Description - Show if available */}
+                        {currentProblem.description && (
+                            <details className="mx-8 mt-4 bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden">
+                                <summary className="px-4 py-2 cursor-pointer hover:bg-gray-800/50 transition-colors text-sm font-medium text-gray-300 flex items-center gap-2">
+                                    <span className="text-xs text-gray-500">▶</span> Problem Description
+                                </summary>
+                                <div className="px-4 py-3 text-sm text-gray-300 leading-relaxed border-t border-gray-800 max-h-60 overflow-y-auto whitespace-pre-wrap">
+                                    {currentProblem.description}
+                                </div>
+                            </details>
+                        )}
 
                         {/* REVEAL AREA - FLIP CARD CONTAINER */}
                         <div className="perspective-1000 min-h-[80vh] bg-gray-900/50">
@@ -776,7 +894,14 @@ export default function App() {
                         <span className="font-bold text-lg tracking-tight">AlgoRecall</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowSettingsModal(true)}
+                            className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors border border-transparent hover:border-gray-700"
+                            title="Settings"
+                        >
+                            <Settings size={20} />
+                        </button>
                         <button
                             onClick={() => setShowAddModal(true)}
                             className="hidden md:flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors border border-gray-700"
@@ -805,24 +930,49 @@ export default function App() {
                                     <span className="text-5xl md:text-6xl font-bold text-white tracking-tight">{dueProblems.length}</span>
                                     <span className="text-lg text-gray-500 font-medium">problems need your attention</span>
                                 </div>
+                                {maxReviewsPerDay > 0 && (
+                                    <div className="mt-2 text-xs font-mono text-gray-500 bg-gray-950/50 inline-block px-2 py-1 rounded border border-gray-800">
+                                        <span className={remainingDailyAllowance <= 0 ? 'text-green-400' : 'text-indigo-400'}>
+                                            {todaysReviewCount}
+                                        </span>
+                                        <span className="opacity-50"> / {maxReviewsPerDay} today</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="w-full md:w-auto min-w-[300px]">
                                 <button
                                     onClick={() => {
                                         if (dueProblems.length > 0) {
-                                            setReviewQueue(dueProblems.map(p => p.url));
+                                            // CHECK DAILY LIMIT
+                                            if (remainingDailyAllowance <= 0) {
+                                                showToast(`Daily limit of ${maxReviewsPerDay} reviews reached! You're done for today.`, 'success');
+                                                return;
+                                            }
+
+                                            // Cap the queue based on remaining allowance
+                                            const queue = dueProblems.slice(0, remainingDailyAllowance).map(p => p.url);
+                                            setReviewQueue(queue);
                                             setReviewMode(true);
                                             setCurrentReviewIndex(0);
                                             setIsAnswerRevealed(false);
                                             setUserCode('');
                                         } else if (nextUpcomingProblem) {
+                                            // CHECK DAILY LIMIT
+                                            if (remainingDailyAllowance <= 0) {
+                                                showToast(`Daily limit of ${maxReviewsPerDay} reviews reached! You're done for today.`, 'success');
+                                                return;
+                                            }
+
                                             const nextDate = new Date(nextUpcomingProblem.next_review_at);
                                             nextDate.setHours(23, 59, 59, 999);
                                             const targetDate = nextDate.toISOString();
                                             setReviewCutoff(targetDate);
                                             const batch = problems.filter(p => p.next_review_at <= targetDate);
-                                            setReviewQueue(batch.map(p => p.url));
+
+                                            // CAP BATCH
+                                            const queue = batch.slice(0, remainingDailyAllowance).map(p => p.url);
+                                            setReviewQueue(queue);
                                             setReviewMode(true);
                                             setCurrentReviewIndex(0);
                                             setIsAnswerRevealed(false);
@@ -911,7 +1061,7 @@ export default function App() {
                                     >
                                         <option value="All">All Status</option>
                                         <option value="Due">Due for Review</option>
-                                        <option value="Completed">Completed</option>
+                                        <option value="Scheduled">Scheduled</option>
                                     </select>
                                 </div>
                                 <div className="space-y-1">
@@ -936,6 +1086,23 @@ export default function App() {
                             <h3 className="text-gray-400 font-medium mb-4 flex items-center gap-2">
                                 <TrendingUp size={16} /> Mastery Level
                             </h3>
+
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-white">{problems.length}</div>
+                                    <div className="text-xs text-gray-500 uppercase tracking-wide">Tracked</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-blue-400">{masteryStats.Mastered}</div>
+                                    <div className="text-xs text-blue-400/70 uppercase tracking-wide">Mastered</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-indigo-400">
+                                        {Math.round((masteryStats.Mastered / (problems.length || 1)) * 100)}%
+                                    </div>
+                                    <div className="text-xs text-indigo-400/70 uppercase tracking-wide">Rate</div>
+                                </div>
+                            </div>
                             <div className="space-y-4">
                                 <div>
                                     <div className="flex justify-between text-xs mb-1">
@@ -1006,15 +1173,40 @@ export default function App() {
                         <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-900 border-b border-gray-800 text-gray-400 font-medium">
+                                    <thead className="bg-gray-900 border-b border-gray-800 text-gray-400 font-medium select-none">
                                         <tr>
-                                            <th className="p-4 pl-6">Problem</th>
-                                            <th className="p-4">Pattern</th>
-                                            <th className="p-4">Added</th>
-                                            <th className="p-4">Next Review</th>
-                                            <th className="p-4">Interval</th>
-                                            <th className="p-4">Mastery</th>
-                                            <th className="p-4">Status</th>
+                                            {[
+                                                { label: 'Problem', key: 'title', className: 'pl-6' },
+                                                { label: 'Pattern', key: 'pattern' },
+                                                { label: 'Added', key: 'created_at' },
+                                                { label: 'Next Review', key: 'next_review_at' },
+                                                { label: 'Interval', key: 'interval' },
+                                                { label: 'Mastery', key: 'mastery' },
+                                                { label: 'Status', key: 'status' }
+                                            ].map(col => {
+                                                const sortState = sortConfig.find(s => s.key === col.key);
+                                                const sortIndex = sortConfig.findIndex(s => s.key === col.key);
+
+                                                return (
+                                                    <th
+                                                        key={col.key}
+                                                        className={`p-4 cursor-pointer hover:text-indigo-400 transition-colors ${col.className || ''}`}
+                                                        onClick={(e) => handleSort(col.key, e)}
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            {col.label}
+                                                            {sortState ? (
+                                                                <div className="flex items-center text-indigo-500">
+                                                                    {sortState.direction === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                                                                    {sortConfig.length > 1 && <span className="text-[10px] ml-0.5">{sortIndex + 1}</span>}
+                                                                </div>
+                                                            ) : (
+                                                                <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-50 transition-opacity" />
+                                                            )}
+                                                        </div>
+                                                    </th>
+                                                )
+                                            })}
                                             <th className="p-4 text-right pr-6">Code</th>
                                         </tr>
                                     </thead>
@@ -1098,9 +1290,15 @@ export default function App() {
 
                                                         <td className="p-4">
                                                             {isDue ? (
-                                                                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></div>
+                                                                    Due
+                                                                </span>
                                                             ) : (
-                                                                <div className="w-2 h-2 rounded-full bg-green-500/30"></div>
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                                                                    Scheduled
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -1271,9 +1469,10 @@ export default function App() {
                                             setProblems(prev => prev.map(p => p.url === updatedProblem.url ? updatedProblem : p));
                                             setCodeModalData(updatedProblem); // Update modal view
                                             setIsEditingProblem(false);
+                                            showToast('Changes saved successfully', 'success');
                                         } catch (err) {
                                             console.error("Failed to update problem", err);
-                                            alert("Failed to save changes.");
+                                            showToast("Failed to save changes.", "error");
                                         }
                                     }}
                                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
@@ -1298,6 +1497,18 @@ export default function App() {
                                     )}
                                 </div>
                             </div>
+
+                            {/* Description Section */}
+                            {codeModalData?.description && (
+                                <details className="mb-4 bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden">
+                                    <summary className="px-4 py-2 cursor-pointer hover:bg-gray-800/50 transition-colors text-sm font-medium text-gray-300 flex items-center gap-2">
+                                        <span className="text-xs text-gray-500">▶</span> Problem Description
+                                    </summary>
+                                    <div className="px-4 py-3 text-sm text-gray-300 leading-relaxed border-t border-gray-800 max-h-60 overflow-y-auto whitespace-pre-wrap">
+                                        {codeModalData.description}
+                                    </div>
+                                </details>
+                            )}
 
                             <div className="bg-gray-950 p-4 rounded-lg border border-gray-800 overflow-x-auto max-h-[60vh]">
                                 <pre className="font-mono text-sm text-gray-300 whitespace-pre">
@@ -1383,6 +1594,20 @@ export default function App() {
             >
                 <Plus size={24} />
             </button >
+
+            {/* SEPARATE COMPONENT: SETTINGS MODAL */}
+            <SettingsModal
+                isOpen={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                onSave={(newSettings) => setMaxReviewsPerDay(newSettings.maxReviewsPerDay || 0)}
+            />
+
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.isVisible}
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
+            />
 
         </div >
     );

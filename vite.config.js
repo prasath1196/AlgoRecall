@@ -16,12 +16,41 @@ export default defineConfig({
             output: {
                 entryFileNames: (chunkInfo) => {
                     if (chunkInfo.name === 'injected' || chunkInfo.name === 'content' || chunkInfo.name === 'background') {
-                        return '[name].js'; // Keep these standard naming for manifest/injection
+                        return '[name].js';
                     }
                     return 'assets/[name]-[hash].js';
                 },
-                chunkFileNames: 'assets/[name]-[hash].js',
-                assetFileNames: 'assets/[name]-[hash].[ext]'
+                chunkFileNames: (chunkInfo) => {
+                    // Force content/background/injected to be self-contained
+                    if (chunkInfo.facadeModuleId?.includes('content.js') ||
+                        chunkInfo.facadeModuleId?.includes('background.js') ||
+                        chunkInfo.facadeModuleId?.includes('injected.js')) {
+                        return '[name].js';
+                    }
+                    return 'assets/[name]-[hash].js';
+                },
+                assetFileNames: 'assets/[name]-[hash].[ext]',
+                manualChunks: (id, { getModuleInfo }) => {
+                    // Don't split chunks for content/background/injected - inline everything
+                    const moduleInfo = getModuleInfo(id);
+                    if (!moduleInfo) return;
+
+                    // Check if this module is imported by content/background/injected
+                    const importers = Array.from(moduleInfo.importers || []);
+                    const isImportedByScript = importers.some(importer =>
+                        importer.includes('content.js') ||
+                        importer.includes('background.js') ||
+                        importer.includes('injected.js')
+                    );
+
+                    if (isImportedByScript) {
+                        return undefined; // Inline into the importing script
+                    }
+
+                    if (id.includes('node_modules')) {
+                        return 'vendor';
+                    }
+                }
             }
         },
         outDir: 'dist',

@@ -11,6 +11,7 @@ export const PLATFORM_CONFIG = {
             LINK_ATTR: 'href',
             LINK_VALUE: '/tag/'
         },
+        DESCRIPTION_SELECTOR: '[data-track-load="description_content"]',
         SUBMISSION: {
             URL_MATCH: '/submit/',
             PAYLOAD: {
@@ -32,12 +33,30 @@ export const PLATFORM_CONFIG = {
             COMPANY_CONTAINER: '.company-tags-container',
             COMPANY_COUNT_CLASS: '.company-tag-count' // For frequency if needed
         },
+        DESCRIPTION_SELECTOR: '.my-article-component-container',
         SUBMISSION: {
             URL_MATCH: 'executeCodeFunctionV2',
             PAYLOAD: {
                 RAW_CODE: ['rawCode', 'data.rawCode'],
                 LANG: ['lang', 'data.lang'],
                 PROBLEM_ID: ['problemId', 'data.problemId']
+            }
+        }
+    },
+    TUF: {
+        DIFFICULTY_SELECTORS: {
+            Easy: '.difficulty-badge--easy',
+            Medium: '.difficulty-badge--medium',
+            Hard: '.difficulty-badge--hard'
+        },
+        DESCRIPTION_SELECTOR: '.tuf-text-14',
+        SUBMISSION: {
+            URL_MATCH: 'backend-go.takeuforward.org/api/v1/plus/judge/submit',
+            PAYLOAD: {
+                TYPED_CODE: 'usercode',
+                LANG: 'language',
+                PROBLEM_ID: 'problem_id',
+                MODE: 'mode'
             }
         }
     },
@@ -57,3 +76,10 @@ export const TOPIC_CLASS = {
     CONTAINER: 'mt-2 flex flex-wrap gap-1 pl-7',
     TAG_HREF_IDENTIFIER: '/tag/'
 };
+
+export const ALLOWED_PATTERN_TAGS_SET = new Set([
+    'Sliding Window', 'Two Pointers', 'DFS', 'BFS', 'DP', 'Binary Search',
+    'Backtracking', 'Greedy', 'Stack', 'Queue', 'Heap', 'Linked List',
+    'Tree', 'Graph', 'Hash Table', 'Array', 'String', 'Math',
+    'Bit Manipulation', 'Union Find', 'Trie', 'Recursion', 'Sorting'
+]);

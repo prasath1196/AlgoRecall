@@ -38,3 +38,5 @@ pnpm-debug.log*
 .agent/
 .gemini/
 brain/
+algorecall.zip 
+npm-debug.log

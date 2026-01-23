@@ -1,12 +1,8 @@
 import './src/index.css';
+import { getAllProblems } from './db.js';
 
 
-const ALLOWED_PATTERN_TAGS_SET = new Set([
-    'Sliding Window', 'Two Pointers', 'DFS', 'BFS', 'DP', 'Binary Search',
-    'Backtracking', 'Greedy', 'Stack', 'Queue', 'Heap', 'Linked List',
-    'Tree', 'Graph', 'Hash Table', 'Array', 'String', 'Math',
-    'Bit Manipulation', 'Union Find', 'Trie', 'Recursion', 'Sorting'
-]);
+import { ALLOWED_PATTERN_TAGS_SET } from './src/constants.js';
 
 function cleanUrl(url) {
     // Regex to capture up to the problem slug, ignoring subsequent paths/params
@@ -19,7 +15,101 @@ function cleanUrl(url) {
 }
 
 
+
+// DOM ELEMENTS
+const tabBtnSave = document.getElementById('tabBtnSave');
+const tabBtnReview = document.getElementById('tabBtnReview');
+const tabSave = document.getElementById('tabSave');
+const tabReview = document.getElementById('tabReview');
+const reviewList = document.getElementById('reviewList');
+const dueCountBadge = document.getElementById('dueCountBadge');
+
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- TAB SWITCHING ---
+    function switchTab(tab) {
+        if (tab === 'save') {
+            tabBtnSave.classList.add('text-indigo-400', 'border-indigo-500');
+            tabBtnSave.classList.remove('text-gray-500', 'border-transparent');
+            tabBtnReview.classList.add('text-gray-500', 'border-transparent');
+            tabBtnReview.classList.remove('text-indigo-400', 'border-indigo-500');
+
+            tabSave.classList.remove('hidden');
+            tabReview.classList.add('hidden');
+        } else {
+            tabBtnReview.classList.add('text-indigo-400', 'border-indigo-500');
+            tabBtnReview.classList.remove('text-gray-500', 'border-transparent');
+            tabBtnSave.classList.add('text-gray-500', 'border-transparent');
+            tabBtnSave.classList.remove('text-indigo-400', 'border-indigo-500');
+
+            tabReview.classList.remove('hidden');
+            tabSave.classList.add('hidden');
+            loadReviewData();
+        }
+    }
+
+    tabBtnSave.addEventListener('click', () => switchTab('save'));
+    tabBtnReview.addEventListener('click', () => switchTab('review'));
+
+    // --- DATA LOADING ---
+    async function loadReviewData() {
+        reviewList.innerHTML = '<li class="text-[10px] text-gray-500 text-center py-2 animate-pulse">Loading reviews...</li>';
+
+        try {
+            const problems = await getAllProblems();
+            const now = new Date().toISOString();
+
+            // Filter Due Problems
+            const dueProblems = problems.filter(p => p.next_review_at <= now);
+
+            // Update Badge
+            dueCountBadge.textContent = `${dueProblems.length} Due`;
+
+            // Render List (Top 3)
+            reviewList.innerHTML = '';
+            const top3 = dueProblems.sort((a, b) => a.next_review_at.localeCompare(b.next_review_at)).slice(0, 3);
+
+            if (top3.length === 0) {
+                reviewList.innerHTML = `
+                    <li class="text-center py-4 flex flex-col items-center gap-2">
+                        <div class="bg-gray-800 p-2 rounded-full text-green-400 opacity-80">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <span class="text-xs text-gray-400">All caught up!</span>
+                    </li>
+                 `;
+            } else {
+                top3.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-gray-950/50 border border-gray-800 rounded-lg p-3 flex items-center justify-between group hover:border-gray-700 transition-colors cursor-pointer';
+                    li.addEventListener('click', () => {
+                        chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
+                    });
+
+                    // Difficulty Class
+                    let diffClass = 'text-gray-400 bg-gray-800 border-gray-700';
+                    if (p.difficulty === 'Easy') diffClass = 'text-green-400 bg-green-500/10 border-green-500/20';
+                    else if (p.difficulty === 'Medium') diffClass = 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+                    else if (p.difficulty === 'Hard') diffClass = 'text-red-400 bg-red-500/10 border-red-500/20';
+
+                    li.innerHTML = `
+                        <span class="text-xs font-medium text-gray-200 truncate pr-2">${p.title}</span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded border ${diffClass}">${p.difficulty}</span>
+                    `;
+                    reviewList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            reviewList.innerHTML = '<li class="text-xs text-red-500 text-center">Failed to load data</li>';
+        }
+    }
+
+    document.getElementById('startSessionBtn').addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html?start_review=true') });
+    });
+
+
     // 1. Auto-fill from Active Tab via Message (Robust Method)
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -113,6 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     document.getElementById('dashboardBtn').addEventListener('click', () => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
+    });
+    document.getElementById('openDashboardLink').addEventListener('click', (e) => {
+        e.preventDefault();
         chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
     });
 });

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AlgoRecall",
   "version": "1.0",
-  "description": "Scrape coding problems and save locally.",
+  "description": "Master LeetCode & coding problems with spaced repetition. Track progress, review solutions, and never forget what you've learned.",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

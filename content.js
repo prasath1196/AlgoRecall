@@ -1,4 +1,64 @@
-import { PLATFORM_CONFIG } from './src/constants';
+// Inline PLATFORM_CONFIG to avoid module imports (content scripts can't use ES modules well)
+const PLATFORM_CONFIG = {
+  LeetCode: {
+    DIFFICULTY_SELECTORS: {
+      Easy: '.text-difficulty-easy',
+      Medium: '.text-difficulty-medium',
+      Hard: '.text-difficulty-hard'
+    },
+    TOPIC_SELECTOR: {
+      CONTAINER: 'mt-2 flex flex-wrap gap-1 pl-7',
+      LINK_ATTR: 'href',
+      LINK_VALUE: '/tag/'
+    },
+    DESCRIPTION_SELECTOR: '[data-track-load="description_content"]',
+    SUBMISSION: {
+      URL_MATCH: '/submit/',
+      PAYLOAD: {
+        TYPED_CODE: 'typed_code',
+        LANG: 'lang',
+        QUESTION_ID: 'question_id'
+      }
+    }
+  },
+  Neetcode: {
+    DIFFICULTY_SELECTORS: {
+      Easy: '.difficulty-pill.easy',
+      Medium: '.difficulty-pill.medium',
+      Hard: '.difficulty-pill.hard'
+    },
+    TOPIC_SELECTOR: {
+      COMPANY_CONTAINER: '.company-tags-container',
+      COMPANY_COUNT_CLASS: '.company-tag-count'
+    },
+    DESCRIPTION_SELECTOR: '.my-article-component-container',
+    SUBMISSION: {
+      URL_MATCH: 'executeCodeFunctionV2',
+      PAYLOAD: {
+        RAW_CODE: ['rawCode', 'data.rawCode'],
+        LANG: ['lang', 'data.lang'],
+        PROBLEM_ID: ['problemId', 'data.problemId']
+      }
+    }
+  },
+  TUF: {
+    DIFFICULTY_SELECTORS: {
+      Easy: '.difficulty-badge--easy',
+      Medium: '.difficulty-badge--medium',
+      Hard: '.difficulty-badge--hard'
+    },
+    DESCRIPTION_SELECTOR: '.tuf-text-14',
+    SUBMISSION: {
+      URL_MATCH: 'backend-go.takeuforward.org/api/v1/plus/judge/submit',
+      PAYLOAD: {
+        TYPED_CODE: 'usercode',
+        LANG: 'language',
+        PROBLEM_ID: 'problem_id',
+        MODE: 'mode'
+      }
+    }
+  }
+};
 
 // Strict Data Validation Enums
 const ALLOWED_PLATFORMS = ['LeetCode', 'HackerRank', 'Codeforces', 'TUF', 'Neetcode'];
@@ -60,6 +120,19 @@ function getPatternTags(platform) {
       return [...new Set(tags)];
     }
     return [];
+  }
+
+  // TUF: Extract tags from URL query parameters (category & subcategory)
+  if (platform === 'TUF') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tags = [];
+    const category = urlParams.get('category');
+    const subcategory = urlParams.get('subcategory');
+
+    if (category) tags.push(category.replace(/-/g, ' '));
+    if (subcategory) tags.push(subcategory.replace(/-/g, ' '));
+
+    return tags.map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)); // Capitalize
   }
 
   // LeetCode / Default Strategy
@@ -151,6 +224,17 @@ function scrapeData(platform) {
 
   console.log('AlgoRecall: Scraped Code Length:', code.length);
 
+  // Extract Description for LeetCode, NeetCode, and TUF
+  let description = '';
+  if (platform === 'LeetCode' || platform === 'Neetcode' || platform === 'TUF') {
+    const config = PLATFORM_CONFIG[platform];
+    const descDiv = document.querySelector(config.DESCRIPTION_SELECTOR);
+    if (descDiv) {
+      description = descDiv.innerText.trim();
+      console.log('AlgoRecall: Scraped Description Length:', description.length);
+    }
+  }
+
   // Allow Known Difficulties OR Multi-Difficulty strings starting with '('
   const finalDifficulty = (ALLOWED_DIFFICULTIES.includes(difficulty) || difficulty.startsWith('('))
     ? difficulty
@@ -162,6 +246,7 @@ function scrapeData(platform) {
     platform: platform, // Verified via detectPlatform call
     difficulty: finalDifficulty,
     pattern_tag: pattern_tag, // Filtered by logic
+    description: description, // Captured description
     notes: '',
     code: code, // Captured code
     interval: 1,

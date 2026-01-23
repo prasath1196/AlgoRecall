@@ -1,0 +1,92 @@
+import React, { useState, useEffect } from 'react';
+import { X, Save, Shield, Clock, Zap } from 'lucide-react';
+
+const SettingsModal = ({ isOpen, onClose, onSave }) => {
+    // Default settings
+    const [settings, setSettings] = useState({
+        maxReviewsPerDay: 0 // 0 = Unlimited
+    });
+
+    useEffect(() => {
+        if (isOpen) {
+            // Load from localStorage
+            const saved = localStorage.getItem('ALGORECALL_SETTINGS');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    // Ensure defaults
+                    if (parsed.maxReviewsPerDay === undefined) parsed.maxReviewsPerDay = 0;
+                    setSettings(parsed);
+                } catch (e) {
+                    console.error('Failed to parse settings', e);
+                }
+            }
+        }
+    }, [isOpen]);
+
+    const handleSave = () => {
+        // Save to localStorage
+        localStorage.setItem('ALGORECALL_SETTINGS', JSON.stringify(settings));
+
+        // Notify parent to reload/apply
+        onSave(settings);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="p-4 flex items-center justify-between border-b border-gray-800">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <Shield className="text-indigo-400" size={20} />
+                        Settings
+                    </h2>
+                    <button onClick={onClose} className="p-1.5 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="p-6 space-y-6">
+                    {/* Max Reviews Per Day */}
+                    <div className="space-y-3">
+                        <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+                            <Clock size={16} className="text-gray-400" />
+                            Daily Review Limit
+                        </label>
+                        <div className="flex items-center gap-4">
+                            <input
+                                type="number"
+                                min="0"
+                                value={settings.maxReviewsPerDay}
+                                onChange={(e) => setSettings({ ...settings, maxReviewsPerDay: parseInt(e.target.value) || 0 })}
+                                className="bg-gray-950 border border-gray-700 text-white rounded-lg px-4 py-2 w-24 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-center font-mono"
+                            />
+                            <span className="text-sm text-gray-500">
+                                {settings.maxReviewsPerDay === 0 ? '(Unlimited)' : 'reviews / day'}
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                            Limits how many problems you review in a single session. Overflow problems will remain in the backlog for tomorrow.
+                            <br />
+                            <span className="text-indigo-400/80">Set to 0 for unlimited reviews.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-4 bg-gray-900/50 border-t border-gray-800 flex justify-end">
+                    <button
+                        onClick={handleSave}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium transition-colors"
+                    >
+                        <Save size={18} />
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default SettingsModal;

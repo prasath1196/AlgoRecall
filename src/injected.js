@@ -1,6 +1,40 @@
 // AlgoRecall: Fetch Interceptor
 // This script runs in the MAIN web page context (not content script isolation)
-import { PLATFORM_CONFIG } from './constants.js';
+
+// Inline PLATFORM_CONFIG to avoid module imports
+const PLATFORM_CONFIG = {
+    LeetCode: {
+        SUBMISSION: {
+            URL_MATCH: '/submit/',
+            PAYLOAD: {
+                TYPED_CODE: 'typed_code',
+                LANG: 'lang',
+                QUESTION_ID: 'question_id'
+            }
+        }
+    },
+    Neetcode: {
+        SUBMISSION: {
+            URL_MATCH: 'executeCodeFunctionV2',
+            PAYLOAD: {
+                RAW_CODE: ['rawCode', 'data.rawCode'],
+                LANG: ['lang', 'data.lang'],
+                PROBLEM_ID: ['problemId', 'data.problemId']
+            }
+        }
+    },
+    TUF: {
+        SUBMISSION: {
+            URL_MATCH: 'backend-go.takeuforward.org/api/v1/plus/judge/submit',
+            PAYLOAD: {
+                TYPED_CODE: 'usercode',
+                LANG: 'language',
+                PROBLEM_ID: 'problem_id',
+                MODE: 'mode'
+            }
+        }
+    }
+};
 
 const originalFetch = window.fetch;
 
@@ -98,6 +132,28 @@ function checkSubmission(url, body) {
             }, '*');
         }
     }
+
+    // TakeUForward
+    const tufConfig = PLATFORM_CONFIG.TUF.SUBMISSION;
+    if (url.includes(tufConfig.URL_MATCH)) {
+        console.log('AlgoRecall: TUF submission detected!', body);
+        if (body[tufConfig.PAYLOAD.TYPED_CODE]) {
+            const problem_id = body[tufConfig.PAYLOAD.PROBLEM_ID];
+            const mode = body[tufConfig.PAYLOAD.MODE];
+            console.log('AlgoRecall: TUF details -', { problem_id, mode });
+
+            window.postMessage({
+                source: 'ALGORECALL_INJECTED',
+                type: 'SUBMISSION_PAYLOAD',
+                payload: {
+                    typed_code: body[tufConfig.PAYLOAD.TYPED_CODE],
+                    lang: body[tufConfig.PAYLOAD.LANG],
+                    timestamp: Date.now(),
+                    ai_summary: null
+                }
+            }, '*');
+        }
+    }
 }
 
 // --- XHR Interceptor (Fallback) ---
@@ -113,7 +169,8 @@ XMLHttpRequest.prototype.send = function (body) {
     if (this._url) {
         const lcMatch = PLATFORM_CONFIG.LeetCode.SUBMISSION.URL_MATCH;
         const ncMatch = PLATFORM_CONFIG.Neetcode.SUBMISSION.URL_MATCH;
-        const isTarget = this._url.includes(lcMatch) || this._url.includes(ncMatch);
+        const tufMatch = PLATFORM_CONFIG.TUF.SUBMISSION.URL_MATCH;
+        const isTarget = this._url.includes(lcMatch) || this._url.includes(ncMatch) || this._url.includes(tufMatch);
 
         if (isTarget && body) {
             try {
