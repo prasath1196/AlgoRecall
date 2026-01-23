@@ -1,5 +1,5 @@
 import './src/index.css';
-import { getAllProblems } from './db.js';
+
 
 const ALLOWED_PATTERN_TAGS_SET = new Set([
     'Sliding Window', 'Two Pointers', 'DFS', 'BFS', 'DP', 'Binary Search',
@@ -18,74 +18,8 @@ function cleanUrl(url) {
     return url;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const saveTabBtn = document.getElementById('saveTabBtn');
-    const reviewTabBtn = document.getElementById('reviewTabBtn');
-    const saveView = document.getElementById('saveView');
-    const reviewView = document.getElementById('reviewView');
 
-    // Tab Switching Logic
-    saveTabBtn.addEventListener('click', () => {
-        saveTabBtn.className = "flex-1 py-2 text-xs font-semibold tracking-wider uppercase border-b-2 border-indigo-500 text-indigo-400 transition-all";
-        reviewTabBtn.className = "flex-1 py-2 text-xs font-semibold tracking-wider uppercase border-b-2 border-transparent text-gray-500 hover:text-gray-300 transition-all";
-        saveView.classList.remove('hidden');
-        reviewView.classList.add('hidden');
-    });
-
-    reviewTabBtn.addEventListener('click', async () => {
-        reviewTabBtn.className = "flex-1 py-2 text-xs font-semibold tracking-wider uppercase border-b-2 border-indigo-500 text-indigo-400 transition-all";
-        saveTabBtn.className = "flex-1 py-2 text-xs font-semibold tracking-wider uppercase border-b-2 border-transparent text-gray-500 hover:text-gray-300 transition-all";
-        saveView.classList.add('hidden');
-        reviewView.classList.remove('hidden');
-        await loadReviews();
-    });
-
-    async function loadReviews() {
-        const reviewList = document.getElementById('reviewList');
-        const dueBadge = document.getElementById('dueCountBadge');
-
-        try {
-            const problems = await getAllProblems();
-            const now = new Date().toISOString();
-            const dueProblems = problems.filter(p => p.next_review_at <= now);
-
-            dueBadge.textContent = `${dueProblems.length} Due`;
-            dueBadge.className = `text-[10px] font-bold ${dueProblems.length > 0 ? 'bg-red-900/30 text-red-500 border-red-800/50' : 'bg-green-900/30 text-green-500 border-green-800/50'} px-2 py-0.5 rounded border`;
-
-            if (dueProblems.length === 0) {
-                reviewList.innerHTML = `
-                    <div class="text-center py-6 text-gray-500 text-xs italic">
-                        Great job! No reviews due today.
-                    </div>
-                `;
-                return;
-            }
-
-            // Render Due Problems
-            reviewList.innerHTML = dueProblems.map(p => {
-                const diffColor = p.difficulty === 'Easy' ? 'text-green-500 border-green-900/30' :
-                    p.difficulty === 'Medium' ? 'text-yellow-500 border-yellow-900/30' :
-                        'text-red-500 border-red-900/30';
-
-                return `
-                    <div class="flex items-center justify-between p-2 rounded-lg bg-gray-950/50 border border-gray-800/50 hover:border-gray-700 transition-all group/item">
-                        <div class="flex-1 min-w-0 mr-2">
-                            <div class="text-[11px] font-medium text-gray-200 truncate group-hover/item:text-indigo-400 transition-colors">${p.title}</div>
-                        </div>
-                        <div class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${diffColor} bg-gray-900/50">${p.difficulty}</div>
-                    </div>
-                `;
-            }).join('');
-
-        } catch (err) {
-            console.error("Failed to load reviews", err);
-            reviewList.innerHTML = `<div class="text-center py-4 text-red-500 text-[10px]">Error loading reviews</div>`;
-        }
-    }
-
-    // Initial load for badge count (optional but good)
-    loadReviews();
-
+document.addEventListener('DOMContentLoaded', () => {
     // 1. Auto-fill from Active Tab via Message (Robust Method)
 
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -178,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-    document.getElementById('startReviewBtn').addEventListener('click', () => {
+    document.getElementById('dashboardBtn').addEventListener('click', () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
     });
 });
