@@ -21,7 +21,8 @@ import {
     ArrowUp,
     ArrowDown,
     Eye,
-    EyeOff
+    EyeOff,
+    Play
 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import Toast from './Toast';
@@ -340,7 +341,11 @@ export default function App() {
     const [reviewMode, setReviewMode] = useState(false);
     const [reviewQueue, setReviewQueue] = useState([]); // Array of URLs
     const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-    const [reviewCutoff, setReviewCutoff] = useState(() => new Date().toISOString());
+    const [reviewCutoff, setReviewCutoff] = useState(() => {
+        const d = new Date();
+        d.setUTCHours(23, 59, 59, 999); // End of Today UTC
+        return d.toISOString();
+    });
 
     const [isAnswerRevealed, setIsAnswerRevealed] = useState(false);
     const [codeModalData, setCodeModalData] = useState(null); // Stores FULL problem object now
@@ -975,9 +980,12 @@ export default function App() {
                         <div className="flex items-center bg-gray-900/50 p-1 rounded-lg border border-gray-800 ml-4">
                             <button
                                 onClick={() => setCurrentView('queue')}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${currentView === 'queue' ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${currentView === 'queue'
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                    }`}
                             >
-                                <Clock size={14} /> Review Queue
+                                <Clock size={16} /> Recall Queue
                             </button>
                             <button
                                 onClick={() => setCurrentView('library')}

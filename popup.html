@@ -21,7 +21,7 @@
 
     <!-- Dashboard Button (Moved to Top) -->
     <button id="dashboardBtn" class="w-full mb-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-indigo-400 hover:text-indigo-300 font-medium rounded-lg transition-all border border-gray-800 active:scale-[0.98] text-[11px] flex items-center justify-center gap-2 uppercase tracking-wide">
-        <span>Master DSA</span>
+        <span>Open Recall Queue</span>
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
     </button>
 
@@ -29,7 +29,7 @@
     <!-- TABS -->
     <div class="flex border-b border-gray-800 mb-4">
         <button id="tabBtnSave" class="flex-1 pb-2 text-xs font-medium text-indigo-400 border-b-2 border-indigo-500 transition-colors">Save Problem</button>
-        <button id="tabBtnReview" class="flex-1 pb-2 text-xs font-medium text-gray-500 hover:text-gray-300 border-b-2 border-transparent transition-colors">Daily Review</button>
+        <button id="tabBtnReview" class="flex-1 pb-2 text-xs font-medium text-gray-500 hover:text-gray-300 border-b-2 border-transparent transition-colors">Daily Recall</button>
     </div>
 
     <!-- TAB CONTENT: SAVE -->
@@ -112,7 +112,7 @@
             
             <!-- Card Header -->
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800/50">
-                <h3 class="text-white font-bold text-sm">Today's Reviews</h3>
+                <h3 class="text-white font-bold text-sm">Today's Recalls</h3>
                 <span id="dueCountBadge" class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-medium">0 Due</span>
             </div>
 
@@ -124,7 +124,7 @@
 
             <!-- Button -->
             <button id="startSessionBtn" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98] text-xs">
-                Start Review Session
+                Start Recall Session
             </button>
         </div>
         
