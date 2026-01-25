@@ -18,7 +18,9 @@
     "*://*.leetcode.com/*",
     "*://*.hackerrank.com/*",
     "*://*.codeforces.com/*",
+    "*://*.takeuforward.org/*",
     "*://takeuforward.org/*",
+    "*://*.neetcode.io/*",
     "*://neetcode.io/*"
   ],
   "background": {
@@ -31,7 +33,9 @@
         "*://*.leetcode.com/*",
         "*://*.hackerrank.com/*",
         "*://*.codeforces.com/*",
+        "*://*.takeuforward.org/*",
         "*://takeuforward.org/*",
+        "*://*.neetcode.io/*",
         "*://neetcode.io/*"
       ],
       "js": [

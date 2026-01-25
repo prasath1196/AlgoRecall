@@ -109,13 +109,34 @@ export async function getDueProblemsCount() {
             request.onsuccess = () => {
                 const problems = request.result;
                 const now = new Date();
-                const dueCount = problems.filter(p => new Date(p.next_review_at) <= now).length;
+                // Set cutoff to end of current UTC day
+                const utcCutoff = new Date();
+                utcCutoff.setUTCHours(23, 59, 59, 999);
+
+                const dueCount = problems.filter(p => new Date(p.next_review_at) <= utcCutoff).length;
                 resolve(dueCount);
             };
             request.onerror = () => reject(request.error);
         });
     } catch (error) {
         console.error('AlgoRecall: Error counting due problems', error);
+        throw error;
+    }
+}
+
+export async function deleteProblem(url) {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.delete(url);
+
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        console.error('AlgoRecall: Error deleting from DB', error);
         throw error;
     }
 }

@@ -39,4 +39,5 @@ pnpm-debug.log*
 .gemini/
 brain/
 algorecall.zip 
-npm-debug.log
+npm-debug.log 
+zip

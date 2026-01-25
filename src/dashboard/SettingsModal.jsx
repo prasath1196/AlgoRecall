@@ -81,7 +81,7 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
                                 type="number"
                                 min="0"
                                 value={settings.maxReviewsPerDay}
-                                onChange={(e) => setSettings({ ...settings, maxReviewsPerDay: parseInt(e.target.value) || 0 })}
+                                onChange={(e) => setSettings({ ...settings, maxReviewsPerDay: Math.max(0, parseInt(e.target.value) || 0) })}
                                 className="bg-gray-950 border border-gray-700 text-white rounded-lg px-4 py-2 w-24 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-center font-mono"
                             />
                             <span className="text-sm text-gray-500">

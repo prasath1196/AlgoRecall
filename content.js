@@ -1,3 +1,5 @@
+import FloatingWidget from './src/content/FloatingWidget.js';
+
 // Inline PLATFORM_CONFIG to avoid module imports (content scripts can't use ES modules well)
 const PLATFORM_CONFIG = {
   LeetCode: {
@@ -70,6 +72,12 @@ const ALLOWED_PATTERN_TAGS = [
   'Tree', 'Graph', 'Hash Table', 'Array', 'String', 'Math',
   'Bit Manipulation', 'Union Find', 'Trie', 'Recursion', 'Sorting'
 ];
+
+// Initialize Widget
+const widget = new FloatingWidget(() => {
+  // On Click: Open Dashboard
+  window.open(chrome.runtime.getURL('src/dashboard/index.html'), '_blank');
+});
 
 function detectPlatform() {
   const hostname = window.location.hostname;
@@ -345,45 +353,29 @@ window.addEventListener('message', (event) => {
 
 
 // Check for due reviews on load (with configurable frequency)
-function checkSessionStartReminder() {
+// Check for due reviews and update widget
+function updateReviewWidget() {
   const platform = detectPlatform();
   if (!platform) return; // Only show on supported platforms
 
-  if (!chrome || !chrome.storage || !chrome.storage.local) {
-    console.warn("AlgoRecall: chrome.storage.local not available, skipping session check.");
-    return;
-  }
-
-  chrome.storage.local.get(['lastRemindedAt', 'reminderFrequencyHours'], (result) => {
-    const lastReminded = result.lastRemindedAt || 0;
-    const frequencyHours = result.reminderFrequencyHours || 6; // Default 6 hours
-    const now = Date.now();
-
-    // Check if enough time has passed (frequencyHours * 3600 * 1000 ms)
-    if (now - lastReminded < frequencyHours * 60 * 60 * 1000) {
-      console.log('AlgoRecall: Recently reminded, skipping toast.');
+  chrome.runtime.sendMessage({ type: 'CHECK_DUE_REVIEWS' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn("AlgoRecall: Error checking due reviews", chrome.runtime.lastError);
       return;
     }
 
-    chrome.runtime.sendMessage({ type: 'CHECK_DUE_REVIEWS' }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.warn("AlgoRecall: Error checking due reviews", chrome.runtime.lastError);
-        return;
-      }
-
-      if (response && response.count > 0) {
-        const msg = `You have ${response.count} problem${response.count > 1 ? 's' : ''} due for review.`;
-        showToast(msg);
-
-        // Update last reminded time
-        chrome.storage.local.set({ lastRemindedAt: now });
-      }
-    });
+    if (response) {
+      widget.mount(); // Ensure it's mounted
+      widget.update(response.count);
+    }
   });
 }
 
+// Run check on load
+updateReviewWidget();
+
 // Run prompt check a bit after load
-setTimeout(checkSessionStartReminder, 2000);
+// updateReviewWidget is called directly above
 
 function showToast(message = "Added to Recall.") {
   // Remove existing toast if any

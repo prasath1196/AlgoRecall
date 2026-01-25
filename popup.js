@@ -57,10 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const problems = await getAllProblems();
-            const now = new Date().toISOString();
+
+            // Calculate cutoff: end of current UTC day (matches Dashboard/QueueView logic)
+            const utcCutoff = new Date();
+            utcCutoff.setUTCHours(23, 59, 59, 999);
 
             // Filter Due Problems
-            const dueProblems = problems.filter(p => p.next_review_at <= now);
+            const dueProblems = problems.filter(p => new Date(p.next_review_at) <= utcCutoff);
 
             // Update Badge
             dueCountBadge.textContent = `${dueProblems.length} Due`;
