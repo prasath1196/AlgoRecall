@@ -140,3 +140,20 @@ export async function deleteProblem(url) {
         throw error;
     }
 }
+
+export async function getProblem(url) {
+    try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.get(url);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        console.error('AlgoRecall: Error getting problem from DB', error);
+        throw error;
+    }
+}

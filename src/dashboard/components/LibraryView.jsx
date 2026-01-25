@@ -358,14 +358,20 @@ const LibraryView = ({ problems, onEdit, onDelete, onProblemClick }) => {
                                         <td className="p-3 text-right">
                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => onEdit(problem)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onEdit(problem);
+                                                    }}
                                                     className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-colors"
                                                     title="Edit"
                                                 >
                                                     <Pencil size={14} />
                                                 </button>
                                                 <button
-                                                    onClick={() => onDelete(problem.url)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onDelete(problem.url);
+                                                    }}
                                                     className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
                                                     title="Delete"
                                                 >

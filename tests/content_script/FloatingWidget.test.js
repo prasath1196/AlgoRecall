@@ -91,4 +91,27 @@ describe('FloatingWidget', () => {
 
         expect(mockCallback).toHaveBeenCalled();
     });
+
+    test('should show rating mode correctly', () => {
+        const mockCallback = jest.fn();
+        widget = new FloatingWidget(() => { });
+        widget.mount();
+
+        widget.showRating(mockCallback);
+
+        const element = document.getElementById('algorecall-widget');
+        const rateButtons = element.querySelectorAll('.ar-rate-btn');
+
+        expect(rateButtons.length).toBe(4);
+        expect(element.innerHTML).toContain('Rate:');
+
+        // Simulate clicking "Good" (rating 3)
+        const goodBtn = Array.from(rateButtons).find(b => b.textContent === 'Good');
+        goodBtn.click();
+
+        expect(mockCallback).toHaveBeenCalledWith(3);
+
+        // Should revert to normal (icon)
+        expect(element.querySelector('svg')).not.toBeNull();
+    });
 });

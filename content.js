@@ -289,23 +289,12 @@ function handleSubmission() {
       return;
     }
 
-    try {
-      chrome.runtime.sendMessage({
-        type: 'SUBMISSION_DETECTED',
-        payload: data
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("AlgoRecall: Runtime error sending message", chrome.runtime.lastError);
-        } else {
-          console.log("AlgoRecall: Message sent to background", response);
-          if (response && response.status === 'success') {
-            showToast("Added to Recall.");
-          }
-        }
-      });
-    } catch (e) {
-      console.error("AlgoRecall: Error sending message", e);
-    }
+    // Instead of auto-sending, prompt for Rating
+    console.log('AlgoRecall: Prompting for rating...');
+    widget.showRating((rating) => {
+      console.log('AlgoRecall: User rated:', rating);
+      sendRatedSubmission(data, rating);
+    });
 
   }, 1000);
 }
@@ -455,22 +444,31 @@ function handleSubmissionWithCode(code, lang, timestamp, ai_summary) {
     return;
   }
 
+  // Prompt for Rating
+  console.log('AlgoRecall: Prompting for rating (with intercepted code)...');
+  widget.showRating((rating) => {
+    console.log('AlgoRecall: User rated:', rating);
+    sendRatedSubmission(data, rating);
+  });
+}
+
+function sendRatedSubmission(data, rating) {
   try {
     chrome.runtime.sendMessage({
-      type: 'SUBMISSION_DETECTED',
-      payload: data
+      type: 'SUBMISSION_RATED',
+      payload: { data, rating }
     }, (response) => {
       if (chrome.runtime.lastError) {
         console.error("AlgoRecall: Runtime error sending message", chrome.runtime.lastError);
       } else {
-        console.log("AlgoRecall: Message sent to background", response);
+        console.log("AlgoRecall: Rated message sent", response);
         if (response && response.status === 'success') {
-          showToast("Added to Recall.");
+          showToast("Rescheduled!");
         }
       }
     });
   } catch (e) {
-    console.error("AlgoRecall: Error sending message", e);
+    console.error("AlgoRecall: Error sending rated message", e);
   }
 }
 

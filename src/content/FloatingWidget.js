@@ -154,6 +154,9 @@ export default class FloatingWidget {
         this.count = count;
         if (!this.element) return;
 
+        // If in rating mode, don't show badge logic yet, or handle differently
+        if (this.isRatingMode) return;
+
         let badge = document.getElementById('algorecall-badge');
 
         if (count > 0) {
@@ -166,6 +169,111 @@ export default class FloatingWidget {
         } else {
             if (badge) badge.remove();
         }
+    }
+
+    showRating(onRate) {
+        if (!this.element) return;
+        this.isRatingMode = true;
+
+        // Remove badge if exists
+        const badge = document.getElementById('algorecall-badge');
+        if (badge) badge.remove();
+
+        // Expand widget
+        this.element.style.width = 'auto'; // Allow expansion
+        this.element.style.height = '48px';
+        this.element.style.borderRadius = '24px'; // Pill shape
+        this.element.style.padding = '0 8px';
+        this.element.style.gap = '8px';
+
+        // Replace content with Rating Buttons using colors from ReviewSession
+        this.element.innerHTML = `
+            <style>
+                .ar-rate-btn {
+                    border: none;
+                    border-radius: 6px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: white;
+                    cursor: pointer;
+                    transition: transform 0.1s;
+                    font-family: -apple-system, sans-serif;
+                }
+                .ar-rate-btn:hover { transform: scale(1.05); }
+                .ar-rate-btn:active { transform: scale(0.95); }
+                .ar-again { background-color: #ef4444; } /* Red 500 */
+                .ar-hard { background-color: #f97316; } /* Orange 500 */
+                .ar-good { background-color: #22c55e; } /* Green 500 */
+                .ar-easy { background-color: #3b82f6; } /* Blue 500 */
+                .ar-title {
+                    color: #9ca3af;
+                    font-size: 10px;
+                    font-weight: 600;
+                    margin-right: 4px;
+                    white-space: nowrap;
+                }
+            </style>
+            <span class="ar-title">Rate:</span>
+            <button class="ar-rate-btn ar-again" data-rating="0">Again</button>
+            <button class="ar-rate-btn ar-hard" data-rating="1">Hard</button>
+            <button class="ar-rate-btn ar-good" data-rating="3">Good</button>
+            <button class="ar-rate-btn ar-easy" data-rating="5">Easy</button>
+        `;
+
+        // Add listeners to buttons
+        const buttons = this.element.querySelectorAll('.ar-rate-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent widget click
+                const rating = parseInt(btn.dataset.rating, 10);
+                this.resetToNormal();
+                if (onRate) onRate(rating);
+            });
+        });
+    }
+
+    resetToNormal() {
+        this.isRatingMode = false;
+        if (!this.element) return;
+
+        // Restore styles
+        this.element.style.width = '48px';
+        this.element.style.height = '48px';
+        this.element.style.borderRadius = '50%';
+        this.element.style.padding = '0';
+        this.element.style.gap = '0';
+
+        // Restore Icon
+        this.element.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+            </svg>
+            <style>
+                #algorecall-widget:hover { transform: scale(1.1); }
+                #algorecall-widget:active { transform: scale(0.95); }
+                #algorecall-badge {
+                    position: absolute;
+                    top: -4px;
+                    right: -4px;
+                    background-color: #ef4444; /* Red 500 */
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                    min-width: 18px;
+                    height: 18px;
+                    border-radius: 9px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 2px solid #1e1e2e;
+                    padding: 0 4px;
+                }
+            </style>
+        `;
+
+        this.update(this.count);
     }
 
     unmount() {
