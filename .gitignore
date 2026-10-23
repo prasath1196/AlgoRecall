@@ -40,4 +40,5 @@ pnpm-debug.log*
 brain/
 algorecall.zip 
 npm-debug.log 
-zipalgorecall-cloud.zip
+zip
+algorecall-cloud.zip
