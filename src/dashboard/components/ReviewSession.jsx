@@ -8,6 +8,7 @@ import 'prismjs/components/prism-c';
 import 'prismjs/components/prism-cpp';
 import { ChevronLeft, ChevronRight, X, Code2, Zap, ExternalLink } from 'lucide-react';
 import { calculateNextReview, formatDate } from '../../utils/algorithms';
+import HintPanel from '../hints/HintPanel';
 
 const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -18,6 +19,7 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
     const [activeTab, setActiveTab] = useState('solve');
     const [noteContent, setNoteContent] = useState('');
     const [isRating, setIsRating] = useState(false); // Prevent rapid clicking
+    const [hintsUsed, setHintsUsed] = useState(0);
 
     const currentUrl = queue[currentIndex];
     const currentProblem = problems.find(p => p.url === currentUrl);
@@ -47,6 +49,7 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
             setComparisonTab('saved');
             setNoteContent(currentProblem.notes || '');
             setIsRating(false); // Reset rating state on problem change
+            setHintsUsed(0);
         }
     }, [currentProblem]);
 
@@ -99,7 +102,8 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
                     ...(currentProblem.review_history || []),
                     {
                         date: new Date().toISOString(),
-                        quality: rating
+                        quality: rating,
+                        hints_used: hintsUsed
                     }
                 ]
             };
@@ -235,6 +239,7 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
                                         placeholder="// Type your solution here..."
                                     />
                                 </div>
+                                <HintPanel problem={currentProblem} userCode={userCode} onHintsUsed={(n) => setHintsUsed((prev) => Math.max(prev, n))} />
                                 <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-end">
                                     <button
                                         onClick={() => {
