@@ -11,6 +11,8 @@
   "permissions": [
     "activeTab",
     "alarms",
+    "identity",
+    "notifications",
     "scripting",
     "storage"
   ],

@@ -1,6 +1,12 @@
 import { saveProblem, openDB, getDueProblemsCount, getProblem, setChangeListener } from './db.js';
 import { syncNow, getSyncStatus, scheduleSync, startRealtime, stopRealtime } from './src/sync/sync.js';
 import { getSession, onAuthChange } from './src/sync/auth.js';
+import {
+    REMINDER_ALARM, scheduleReminder, setReminder, getReminder, getLocalSummary,
+    handleReminderAlarm, handleNotificationClick,
+} from './src/background/reminders.js';
+import { importLeetCode } from './src/background/leetcodeImport.js';
+import { signInWithGitHubFlow } from './src/background/githubAuth.js';
 
 // Initialize DB immediately so it shows up in DevTools
 openDB().then(() => console.log('AlgoRecall: DB Initialized')).catch(err => console.error('AlgoRecall: DB Init Failed', err));
@@ -31,9 +37,14 @@ async function startupSync() {
     } catch (e) { console.error('AlgoRecall: startup sync failed', e); }
 }
 
-chrome.runtime.onInstalled.addListener(() => { ensureSyncAlarm(); });
-chrome.runtime.onStartup.addListener(() => { ensureSyncAlarm(); startupSync(); });
+chrome.runtime.onInstalled.addListener(() => { ensureSyncAlarm(); scheduleReminder(); });
+chrome.runtime.onStartup.addListener(() => { ensureSyncAlarm(); scheduleReminder(); startupSync(); });
+chrome.notifications.onClicked.addListener(handleNotificationClick);
 chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === REMINDER_ALARM) {
+        handleReminderAlarm().catch(e => console.error('AlgoRecall: reminder failed', e));
+        return;
+    }
     if (alarm.name !== SYNC_ALARM) return;
     // Alarm wakes a suspended worker: re-establish realtime and sync.
     startupSync();
@@ -89,6 +100,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === 'GET_SYNC_STATUS') {
         getSyncStatus().then(sendResponse).catch(err => sendResponse({ state: 'error', error: String(err), lastSyncedAt: null, email: null }));
+        return true;
+    }
+
+    if (message.type === 'GET_LOCAL_SUMMARY') {
+        getLocalSummary().then(sendResponse).catch(() => sendResponse({ total: 0, due: 0 }));
+        return true;
+    }
+
+    if (message.type === 'SET_REMINDER') {
+        setReminder({ enabled: message.enabled, time: message.time })
+            .then(sendResponse).catch(err => sendResponse({ ok: false, error: String(err) }));
+        return true;
+    }
+
+    if (message.type === 'GET_REMINDER') {
+        getReminder().then(sendResponse).catch(() => sendResponse({ enabled: false, time: '09:00' }));
+        return true;
+    }
+
+    if (message.type === 'IMPORT_LEETCODE') {
+        importLeetCode({ limit: message.limit }).then(sendResponse)
+            .catch(err => sendResponse({ ok: false, imported: 0, skipped: 0, error: String(err) }));
+        return true;
+    }
+
+    if (message.type === 'SIGN_IN_GITHUB') {
+        signInWithGitHubFlow().then(sendResponse).catch(err => sendResponse({ ok: false, error: String(err) }));
         return true;
     }
 

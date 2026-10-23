@@ -40,3 +40,13 @@ export function onAuthChange(cb) {
     const { data } = getSupabase().auth.onAuthStateChange((event, session) => cb(event, session));
     return () => data.subscription.unsubscribe();
 }
+
+/** Starts GitHub OAuth. Runs in the background worker (identity flow) via SIGN_IN_GITHUB. Resolves { ok, error? }. */
+export async function signInWithGitHub() {
+    try {
+        const res = await chrome.runtime.sendMessage({ type: 'SIGN_IN_GITHUB' });
+        return res || { ok: false, error: 'no_response' };
+    } catch (e) {
+        return { ok: false, error: (e && e.message) || String(e) };
+    }
+}
