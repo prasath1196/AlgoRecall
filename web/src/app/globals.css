@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fafaf9;
+  --foreground: #18181b;
+  --muted: #5b5b66;
+  --card: #ffffff;
+  --border: #e4e4e7;
+  --accent: #6d5efc;
+  --accent-2: #0ea5a4;
+  --flame: #ea580c;
+  --h0: #ebedf0;
+  --h1: #c4b8ff;
+  --h2: #9a89ff;
+  --h3: #7461f5;
+  --h4: #4c38d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --muted: #a1a1aa;
+    --card: #111114;
+    --border: #26262c;
+    --accent: #8b7bff;
+    --accent-2: #2dd4bf;
+    --flame: #fb923c;
+    --h0: #1c1c22;
+    --h1: #2e2872;
+    --h2: #4a3fb5;
+    --h3: #6f5ff0;
+    --h4: #a99dff;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent2: var(--accent-2);
+  --color-flame: var(--flame);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%);
+}
+
+.heat-0 { background: var(--h0); }
+.heat-1 { background: var(--h1); }
+.heat-2 { background: var(--h2); }
+.heat-3 { background: var(--h3); }
+.heat-4 { background: var(--h4); }
