@@ -206,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     initSyncLine();
+    initFirstRunHint();
 
     document.getElementById('dashboardBtn').addEventListener('click', () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
@@ -260,4 +261,24 @@ function initSyncLine() {
         });
         if (r && typeof r.then === 'function') r.then(res => render(res && (res.status || res)), () => { });
     } catch (e) { /* no background */ }
+}
+
+
+// --- ONE-TIME FIRST-RUN HINT (tolerates missing elements / storage) ---
+function initFirstRunHint() {
+    const hint = document.getElementById('firstRunHint');
+    if (!hint) return;
+    try {
+        const store = chrome.storage && chrome.storage.local;
+        if (!store || typeof store.get !== 'function') return;
+        const hide = () => hint.classList.add('hidden');
+        const dismiss = document.getElementById('firstRunHintDismiss');
+        if (dismiss) dismiss.addEventListener('click', hide);
+        store.get(['popup_hint_seen'], (res) => {
+            try { void chrome.runtime.lastError; } catch (e) { /* ignore */ }
+            if (res && res.popup_hint_seen) return;
+            hint.classList.remove('hidden');
+            try { store.set({ popup_hint_seen: true }); } catch (e) { /* ignore */ }
+        });
+    } catch (e) { /* no storage */ }
 }

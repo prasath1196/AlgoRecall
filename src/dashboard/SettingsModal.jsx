@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Shield, Clock, Zap } from 'lucide-react';
+import { useSyncStatus } from './sync/useSyncStatus';
+import ReminderSection from './settings/ReminderSection';
+import ImportSection from './settings/ImportSection';
+import PublicProfileSection from './settings/PublicProfileSection';
+import WeeklyRecapSection from './settings/WeeklyRecapSection';
+import { useProfile } from './settings/useProfile';
 
-const SettingsModal = ({ isOpen, onClose, onSave }) => {
+const SettingsModal = ({ isOpen, onClose, onSave, status: statusProp }) => {
+    const own = useSyncStatus();
+    const status = statusProp || own.status;
+    const signedIn = !!status && status.state !== 'signed_out';
+    const { profile, loading: profileLoading, save: saveProfile } = useProfile(isOpen && signedIn);
+
     // Default settings
     const [settings, setSettings] = useState({
         maxReviewsPerDay: 0 // 0 = Unlimited
@@ -58,7 +69,7 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
                 <div className="p-4 flex items-center justify-between border-b border-gray-800">
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Shield className="text-indigo-400" size={20} />
@@ -69,7 +80,7 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-6 overflow-y-auto">
                     {/* Max Reviews Per Day */}
                     <div className="space-y-3">
                         <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
@@ -116,6 +127,15 @@ const SettingsModal = ({ isOpen, onClose, onSave }) => {
                             How often to remind you about due reviews when you visit a coding platform.
                         </p>
                     </div>
+
+                    <ReminderSection />
+                    <ImportSection />
+                    {signedIn && (
+                        <>
+                            <PublicProfileSection profile={profile} onSave={saveProfile} loading={profileLoading} />
+                            <WeeklyRecapSection profile={profile} onSave={saveProfile} />
+                        </>
+                    )}
                 </div>
 
                 <div className="p-4 bg-gray-900/50 border-t border-gray-800 flex justify-end">

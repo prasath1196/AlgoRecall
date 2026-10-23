@@ -25,6 +25,14 @@
         <span id="syncLine" role="status" aria-live="polite" class="flex items-center gap-1">Sign in to sync</span>
     </div>
 
+    <!-- One-time first-run hint (shown once, dismissible) -->
+    <div id="firstRunHint" role="note" class="hidden mb-3">
+      <div class="p-2.5 rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-[11px] text-indigo-200 leading-snug flex items-start gap-2">
+        <span class="flex-1">Tip: your problems are saved on this device. Open the dashboard and sign in to back them up and sync across devices.</span>
+        <button id="firstRunHintDismiss" type="button" aria-label="Dismiss tip" class="text-indigo-300 hover:text-white leading-none text-sm px-1">&times;</button>
+      </div>
+    </div>
+
     <!-- Dashboard Button (Moved to Top) -->
     <button id="dashboardBtn" class="w-full mb-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-indigo-400 hover:text-indigo-300 font-medium rounded-lg transition-all border border-gray-800 active:scale-[0.98] text-[11px] flex items-center justify-center gap-2 uppercase tracking-wide">
         <span>Open Recall Queue</span>

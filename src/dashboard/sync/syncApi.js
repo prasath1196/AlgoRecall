@@ -71,3 +71,27 @@ export function formatRelative(iso, now = Date.now()) {
     if (h < 24) return `${h}h ago`;
     return `${Math.round(h / 24)}d ago`;
 }
+
+// chrome.storage.local helpers (callback or promise style, never throw).
+export function storageGet(keys, timeoutMs = 2000) {
+    return new Promise((resolve) => {
+        let done = false;
+        const finish = (v) => { if (!done) { done = true; resolve(v || {}); } };
+        const timer = setTimeout(() => finish({}), timeoutMs);
+        try {
+            const r = chrome.storage.local.get(keys, (res) => { clearTimeout(timer); finish(res); });
+            if (r && typeof r.then === 'function') r.then((res) => { clearTimeout(timer); finish(res); }, () => finish({}));
+        } catch (e) { clearTimeout(timer); finish({}); }
+    });
+}
+
+export function storageSet(obj) {
+    try {
+        const r = chrome.storage.local.set(obj);
+        if (r && typeof r.then === 'function') return r.catch(() => { });
+    } catch (e) { /* ignore */ }
+    return Promise.resolve();
+}
+
+// Profile module (owned elsewhere) is imported lazily so the UI degrades gracefully.
+export const loadProfile = () => import('../../sync/profile.js');

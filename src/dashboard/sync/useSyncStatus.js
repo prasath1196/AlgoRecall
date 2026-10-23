@@ -3,6 +3,7 @@ import { DEFAULT_STATUS, getStatus, onRuntimeMessage, normalizeStatus } from './
 
 export function useSyncStatus() {
     const [status, setStatus] = useState(DEFAULT_STATUS);
+    const [loaded, setLoaded] = useState(false);
 
     const refresh = useCallback(async () => {
         const s = await getStatus();
@@ -12,12 +13,12 @@ export function useSyncStatus() {
 
     useEffect(() => {
         let alive = true;
-        getStatus().then((s) => { if (alive) setStatus((prev) => (prev === DEFAULT_STATUS ? s : prev)); });
+        getStatus().then((s) => { if (alive) { setStatus((prev) => (prev === DEFAULT_STATUS ? s : prev)); setLoaded(true); } });
         const off = onRuntimeMessage((msg) => {
-            if (msg && msg.type === 'SYNC_STATUS_CHANGED' && alive) setStatus(normalizeStatus(msg.status));
+            if (msg && msg.type === 'SYNC_STATUS_CHANGED' && alive) { setStatus(normalizeStatus(msg.status)); setLoaded(true); }
         });
         return () => { alive = false; off(); };
     }, []);
 
-    return { status, setStatus, refresh };
+    return { status, setStatus, refresh, loaded };
 }

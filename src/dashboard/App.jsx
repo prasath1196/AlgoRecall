@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Brain, Plus, LogOut, Settings } from 'lucide-react';
 
@@ -11,11 +11,31 @@ import Toast from './Toast';
 import { useProblems } from './hooks/useProblems';
 import SyncIndicator from './sync/SyncIndicator';
 import AccountPanel from './sync/AccountPanel';
-import InsightsSection from './sync/Insights';
+import InsightsSection, { useStats } from './sync/Insights';
+import BackupPrompt from './sync/BackupPrompt';
+import { applyRating } from './applyRating';
 import { useSyncStatus } from './sync/useSyncStatus';
 import { onRuntimeMessage } from './sync/syncApi';
 
 export const queryClient = new QueryClient();
+
+// Mock interview view is loaded on demand (and may fail independently of the rest of the app).
+const MockInterviewView = lazy(() => import('./mock/MockInterviewView.jsx'));
+
+class MockBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { failed: false }; }
+    static getDerivedStateFromError() { return { failed: true }; }
+    componentDidCatch(err) { console.error('Mock interview failed to load', err); }
+    render() {
+        if (!this.state.failed) return this.props.children;
+        return (
+            <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center space-y-3">
+                <p className="text-sm text-red-300">Mock interview couldn't be loaded.</p>
+                <button type="button" onClick={this.props.onExit} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-100 text-sm rounded-lg">Back to queue</button>
+            </div>
+        );
+    }
+}
 
 // Wrapped App to use Query Context
 const Dashboard = () => {
@@ -32,7 +52,11 @@ const Dashboard = () => {
 
     const queryClient = useQueryClient();
     const [showAccount, setShowAccount] = useState(false);
-    const { status: syncStatus, setStatus: setSyncStatus, refresh: refreshSync } = useSyncStatus();
+    const { status: syncStatus, setStatus: setSyncStatus, refresh: refreshSync, loaded: syncLoaded } = useSyncStatus();
+    const { data: statsData } = useStats();
+    const weakPatterns = (statsData && Array.isArray(statsData.weakest_patterns))
+        ? statsData.weakest_patterns.map(w => w.pattern).filter(Boolean)
+        : [];
 
     // Custom Hook
     const { problems, isLoading, saveProblem, deleteProblem } = useProblems();
@@ -166,6 +190,8 @@ const Dashboard = () => {
         setIsReviewing(true);
     };
 
+    const handleMockRating = (problem, quality) => saveProblem(applyRating(problem, quality));
+
     if (isReviewing) {
         return (
             <ReviewSession
@@ -222,7 +248,22 @@ const Dashboard = () => {
                         All Problems
                         {activeTab === 'library' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 rounded-t-full shadow-[0_-2px_8px_rgba(99,102,241,0.5)]"></div>}
                     </button>
+                    <button
+                        onClick={() => setActiveTab('mock')}
+                        className={`pb-4 text-sm font-medium transition-all relative ${activeTab === 'mock' ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Mock interview
+                        {activeTab === 'mock' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 rounded-t-full shadow-[0_-2px_8px_rgba(99,102,241,0.5)]"></div>}
+                    </button>
                 </div>
+
+                {activeTab === 'queue' && (
+                    <BackupPrompt
+                        signedIn={syncStatus.state !== 'signed_out'}
+                        statusLoaded={syncLoaded}
+                        onBackup={() => setShowAccount(true)}
+                    />
+                )}
 
                 {isLoading ? (
                     <div className="flex items-center justify-center py-20">
@@ -230,7 +271,18 @@ const Dashboard = () => {
                     </div>
                 ) : (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {activeTab === 'queue' ? (
+                        {activeTab === 'mock' ? (
+                            <MockBoundary onExit={() => setActiveTab('queue')}>
+                                <Suspense fallback={<div className="py-16 text-center text-sm text-gray-500" role="status">Loading mock interview…</div>}>
+                                    <MockInterviewView
+                                        problems={problems}
+                                        weakPatterns={weakPatterns}
+                                        onExit={() => setActiveTab('queue')}
+                                        onSaveRating={handleMockRating}
+                                    />
+                                </Suspense>
+                            </MockBoundary>
+                        ) : activeTab === 'queue' ? (
                             <>
                             <QueueView
                                 problems={problems}
@@ -273,6 +325,7 @@ const Dashboard = () => {
                 <SettingsModal
                     isOpen={showSettingsModal}
                     onClose={() => setShowSettingsModal(false)}
+                    status={syncStatus}
                     onSave={(newSettings) => {
                         setMaxReviewsPerDay(newSettings.maxReviewsPerDay);
                     }}

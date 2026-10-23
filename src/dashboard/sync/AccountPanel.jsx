@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CloudIcon, XIcon, MailIcon, RefreshIcon, LogOutIcon, SparklesIcon, CloudCheckIcon } from './icons';
+import { CloudIcon, XIcon, MailIcon, RefreshIcon, LogOutIcon, SparklesIcon, CloudCheckIcon, GithubIcon } from './icons';
 import CodeInput from './CodeInput';
 import { loadAuth, syncNowMsg, sendMsg, formatRelative, DEFAULT_STATUS } from './syncApi';
 import './sync.css';
@@ -15,6 +15,8 @@ export function friendlyAuthError(err, kind) {
     if (/email/i.test(msg) && kind === 'send') return 'Please enter a valid email address.';
     return msg || 'Something went wrong. Please try again.';
 }
+
+export const GITHUB_DISABLED_MSG = "GitHub sign-in isn't enabled yet \u2014 use email for now";
 
 const AccountPanel = ({ isOpen, onClose, status, setStatus, refresh }) => {
     const [step, setStep] = useState('email'); // email | code
@@ -77,6 +79,32 @@ const AccountPanel = ({ isOpen, onClose, status, setStatus, refresh }) => {
         } finally { setBusy(false); }
     };
 
+    const signInGitHub = async () => {
+        setBusy(true); setError('');
+        try {
+            let res = await sendMsg({ type: 'SIGN_IN_GITHUB' }, 120000);
+            if (res === undefined) {
+                // No background responder (e.g. opened outside the extension): try the module directly.
+                const auth = await loadAuth();
+                if (typeof auth.signInWithGitHub === 'function') {
+                    try { res = await auth.signInWithGitHub(); if (res === undefined) res = { ok: true }; }
+                    catch (err) { res = { ok: false, error: String((err && (err.code || err.message)) || 'failed') }; }
+                }
+            }
+            if (res && res.ok) {
+                const s = await refresh();
+                if (!s || s.state === 'signed_out') setStatus({ ...DEFAULT_STATUS, state: 'idle' });
+                sendMsg({ type: 'SYNC_NOW' });
+            } else if (res && /provider_not_enabled/.test(String(res.error))) {
+                setError(GITHUB_DISABLED_MSG);
+            } else if (res && /cancel|closed|user_cancel|did not approve/i.test(String(res.error))) {
+                setError('GitHub sign-in was cancelled.');
+            } else {
+                setError("Couldn't sign in with GitHub. Please try again or use email.");
+            }
+        } finally { setBusy(false); }
+    };
+
     const doSyncNow = async () => {
         setSyncing(true);
         try {
@@ -127,6 +155,18 @@ const AccountPanel = ({ isOpen, onClose, status, setStatus, refresh }) => {
                                     Sign in with a one-time email code - no password. Your problems stay on this device first, and sync quietly in the background.
                                 </p>
                             </div>
+
+                            {step === 'email' && (
+                                <>
+                                    <button type="button" onClick={signInGitHub} disabled={busy}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors border border-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300">
+                                        <GithubIcon size={18} /> Continue with GitHub
+                                    </button>
+                                    <div className="flex items-center gap-3 text-xs text-gray-600" aria-hidden="true">
+                                        <span className="flex-1 h-px bg-gray-800" /> or <span className="flex-1 h-px bg-gray-800" />
+                                    </div>
+                                </>
+                            )}
 
                             {step === 'email' ? (
                                 <form onSubmit={sendCode} className="space-y-3" noValidate>
