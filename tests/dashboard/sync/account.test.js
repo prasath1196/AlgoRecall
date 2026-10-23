@@ -70,6 +70,48 @@ describe('AccountPanel', () => {
         expect(await screen.findByText(/invalid or expired/i)).toBeInTheDocument();
     });
 
+    describe('send-code error mapping', () => {
+        const submit = (addr = 'me@x.com') => {
+            render(<Harness />);
+            fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: addr } });
+            fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+        };
+
+        test('HTTP 500 SMTP failure shows could-not-send message, not email-format', async () => {
+            const spy = jest.spyOn(console, 'error').mockImplementation(() => { });
+            mockAuth.sendEmailCode.mockRejectedValueOnce(Object.assign(new Error('Error sending magic link email'), { status: 500, code: 'unexpected_failure', name: 'AuthApiError' }));
+            submit();
+            expect(await screen.findByText("We couldn't send the code right now. Please try again in a minute.")).toBeInTheDocument();
+            expect(screen.queryByText(/valid email/i)).not.toBeInTheDocument();
+            expect(spy).toHaveBeenCalledWith(expect.stringMatching(/^AlgoRecall:/), expect.anything());
+            spy.mockRestore();
+        });
+
+        test('400 email_address_invalid shows valid-email message', async () => {
+            mockAuth.sendEmailCode.mockRejectedValueOnce(Object.assign(new Error('Email address "x@y" is invalid'), { status: 400, code: 'email_address_invalid' }));
+            submit();
+            expect(await screen.findByText('Please enter a valid email address.')).toBeInTheDocument();
+        });
+
+        test('429 over_email_send_rate_limit shows rate-limit message', async () => {
+            mockAuth.sendEmailCode.mockRejectedValueOnce(Object.assign(new Error('email rate limit exceeded'), { status: 429, code: 'over_email_send_rate_limit' }));
+            submit();
+            expect(await screen.findByText('Too many requests, try again in a minute')).toBeInTheDocument();
+        });
+
+        test('client-side check rejects "abc" without calling auth', () => {
+            submit('abc');
+            expect(screen.getByText('Please enter a valid email address.')).toBeInTheDocument();
+            expect(mockAuth.sendEmailCode).not.toHaveBeenCalled();
+        });
+
+        test('unknown error with "email" in message falls back to generic message', async () => {
+            mockAuth.sendEmailCode.mockRejectedValueOnce(new Error('something about email odd'));
+            submit();
+            expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument();
+        });
+    });
+
     test('signed in: sync now sends SYNC_NOW and sign out asks for confirmation', async () => {
         installChrome({ state: 'idle', lastSyncedAt: new Date().toISOString(), error: null, email: 'me@x.com' });
         mockAuth.signOut.mockResolvedValue();

@@ -7,13 +7,29 @@ import './sync.css';
 const RESEND_SECONDS = 30;
 
 export function friendlyAuthError(err, kind) {
-    const msg = String((err && (err.message || err.error_description || err)) || '');
-    const code = err && (err.status || err.code);
-    if (code === 429 || /429|rate|too many|security purposes/i.test(msg)) return 'Too many requests, try again in a minute';
+    const msg = String((err && (err.message || err.error_description)) || (typeof err === 'string' ? err : '') || '');
+    const status = err && typeof err.status === 'number' ? err.status : undefined;
+    const code = err && typeof err.code === 'string' ? err.code : '';
+    const name = (err && err.name) || '';
+
+    if (status === 429 || code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit' || /rate limit/i.test(msg)) {
+        return 'Too many requests, try again in a minute';
+    }
+    const isNetwork = (typeof TypeError !== 'undefined' && err instanceof TypeError)
+        || name === 'AuthRetryableFetchError' || /failed to fetch|networkerror|network request failed|offline/i.test(msg);
+    if (isNetwork) return 'Network error. Check your connection and try again.';
     if (kind === 'verify' && /invalid|expired|token|otp|code/i.test(msg)) return 'That code is invalid or expired. Check it and try again.';
-    if (/fetch|network|offline/i.test(msg)) return 'Network error. Check your connection and try again.';
-    if (/email/i.test(msg) && kind === 'send') return 'Please enter a valid email address.';
-    return msg || 'Something went wrong. Please try again.';
+    if (kind === 'send') {
+        if ((code === 'email_address_invalid' || code === 'validation_failed') && (status === undefined || status === 400 || status === 422)
+            && /email|address|format/i.test(msg)) {
+            return 'Please enter a valid email address.';
+        }
+        if ((status !== undefined && status >= 500) || /error sending|smtp|unexpected_failure/i.test(msg) || code === 'unexpected_failure') {
+            console.error('AlgoRecall: failed to send sign-in code', err);
+            return "We couldn't send the code right now. Please try again in a minute.";
+        }
+    }
+    return 'Something went wrong. Please try again.';
 }
 
 export const GITHUB_DISABLED_MSG = "GitHub sign-in isn't enabled yet \u2014 use email for now";
