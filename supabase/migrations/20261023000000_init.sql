@@ -78,8 +78,10 @@ begin
 end;
 $$;
 
-drop trigger if exists problems_set_updated_at on public.problems;
-create trigger problems_set_updated_at
+-- NOTE: "create or replace trigger" (PG14+) instead of drop+create: the
+-- "drop trigger if exists ...; create trigger ..." form timed out through the
+-- Supabase MCP apply_migration tool (see supabase/APPLY_NOTES.md).
+create or replace trigger problems_set_updated_at
   before insert or update on public.problems
   for each row execute function public.set_updated_at();
 
@@ -111,8 +113,7 @@ $$;
 
 revoke all on function public.handle_new_user() from public, anon, authenticated;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
+create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
