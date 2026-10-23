@@ -12,7 +12,6 @@ const features = [
   ["SM-2 scheduling", "The proven spaced repetition algorithm decides when each problem returns."],
   ["Streaks & heatmap", "Keep a daily streak alive and see a year of practice at a glance."],
   ["Focus mode", "Drill your weakest patterns first, where retention is lowest."],
-  ["AI hints", "Three levels of nudges toward the pattern, never the full answer."],
   ["Mock interviews", "Timed sessions weighted toward weak and overdue problems."],
   ["Cloud sync", "Sign in once and your progress follows you across devices."],
 ];

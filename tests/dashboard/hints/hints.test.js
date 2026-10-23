@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ReviewSession from '../../../src/dashboard/components/ReviewSession';
+import { FEATURES } from '../../../src/sync/config';
 
 const mockRequestHint = jest.fn();
 jest.mock('../../../src/sync/profile.js', () => ({ requestHint: (...a) => mockRequestHint(...a) }), { virtual: true });
@@ -26,7 +27,14 @@ const setup = () => {
     return { onUpdateProblem, onComplete };
 };
 
-beforeEach(() => mockRequestHint.mockReset());
+beforeEach(() => { mockRequestHint.mockReset(); FEATURES.aiHints = true; });
+afterEach(() => { FEATURES.aiHints = false; });
+
+test('hint control is NOT rendered by default (flag off)', () => {
+    FEATURES.aiHints = false;
+    setup();
+    expect(screen.queryByText('Stuck? Get a hint')).not.toBeInTheDocument();
+});
 
 test('never auto-requests', () => {
     setup();

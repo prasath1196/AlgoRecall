@@ -9,6 +9,7 @@ import 'prismjs/components/prism-cpp';
 import { ChevronLeft, ChevronRight, X, Code2, Zap, ExternalLink } from 'lucide-react';
 import { calculateNextReview, formatDate } from '../../utils/algorithms';
 import HintPanel from '../hints/HintPanel';
+import { FEATURES } from '../../sync/config';
 
 const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -103,7 +104,7 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
                     {
                         date: new Date().toISOString(),
                         quality: rating,
-                        hints_used: hintsUsed
+                        ...(FEATURES.aiHints ? { hints_used: hintsUsed } : {})
                     }
                 ]
             };
@@ -239,7 +240,9 @@ const ReviewSession = ({ queue, problems, onComplete, onUpdateProblem }) => {
                                         placeholder="// Type your solution here..."
                                     />
                                 </div>
-                                <HintPanel problem={currentProblem} userCode={userCode} onHintsUsed={(n) => setHintsUsed((prev) => Math.max(prev, n))} />
+                                {FEATURES.aiHints && (
+                                    <HintPanel problem={currentProblem} userCode={userCode} onHintsUsed={(n) => setHintsUsed((prev) => Math.max(prev, n))} />
+                                )}
                                 <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-end">
                                     <button
                                         onClick={() => {
