@@ -5,5 +5,5 @@ export default function robots(): MetadataRoute.Robots {
 }
 
 function base() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "https://algorecall.vercel.app";
+  return process.env.NEXT_PUBLIC_SITE_URL || "https://algorecall-eta.vercel.app";
 }
