@@ -8,4 +8,6 @@ export default {
         '^.+\\.svg$': '<rootDir>/src/__mocks__/fileMock.js',
     },
     setupFilesAfterEnv: ['<rootDir>/src/setupTests.js'],
+    testPathIgnorePatterns: ['/node_modules/', '/web/'],
+    modulePathIgnorePatterns: ['<rootDir>/web/'],
 };

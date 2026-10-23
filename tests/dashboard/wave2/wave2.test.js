@@ -7,6 +7,7 @@ import BackupPrompt from '../../../src/dashboard/sync/BackupPrompt';
 import SettingsModal from '../../../src/dashboard/SettingsModal';
 import App, { queryClient as appQueryClient } from '../../../src/dashboard/App';
 import { useProblems } from '../../../src/dashboard/hooks/useProblems';
+import { PUBLIC_SITE_URL } from '../../../src/sync/config.js';
 
 const mockProfile = { getMyProfile: jest.fn(), setProfile: jest.fn() };
 jest.mock('../../../src/sync/profile.js', () => ({
@@ -153,12 +154,12 @@ describe('Settings sections', () => {
         expect(screen.getByText('Save profile')).toBeDisabled();
 
         fireEvent.change(input, { target: { value: 'Cool_Dev-1' } });
-        expect(screen.getByTestId('profile-link')).toHaveTextContent('https://algorecall.vercel.app/u/cool_dev-1');
+        expect(screen.getByTestId('profile-link')).toHaveTextContent(`${PUBLIC_SITE_URL}/u/cool_dev-1`);
 
         const writeText = jest.fn().mockResolvedValue();
         Object.assign(navigator, { clipboard: { writeText } });
         fireEvent.click(screen.getByLabelText('Copy profile link'));
-        await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://algorecall.vercel.app/u/cool_dev-1'));
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${PUBLIC_SITE_URL}/u/cool_dev-1`));
 
         fireEvent.click(screen.getByRole('switch', { name: 'Make my progress page public' }));
         fireEvent.click(screen.getByText('Save profile'));
