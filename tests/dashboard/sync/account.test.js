@@ -19,7 +19,7 @@ const Harness = () => {
 };
 
 const typeCode = (code) => {
-    const first = screen.getByLabelText('Digit 1 of 6');
+    const first = screen.getByLabelText('Sign-in code');
     fireEvent.paste(first, { clipboardData: { getData: () => code } });
 };
 
@@ -45,7 +45,7 @@ describe('AccountPanel', () => {
         fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'me@x.com' } });
         fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
 
-        await screen.findByLabelText('Digit 1 of 6');
+        await screen.findByLabelText('Sign-in code');
         expect(mockAuth.sendEmailCode).toHaveBeenCalledWith('me@x.com');
         expect(screen.getByText(/Resend code in 30s/)).toBeInTheDocument();
 
@@ -64,10 +64,55 @@ describe('AccountPanel', () => {
 
         mockAuth.sendEmailCode.mockResolvedValue({});
         fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
-        await screen.findByLabelText('Digit 1 of 6');
+        await screen.findByLabelText('Sign-in code');
         mockAuth.verifyEmailCode.mockRejectedValue(new Error('Token has expired or is invalid'));
         typeCode('000000');
         expect(await screen.findByText(/invalid or expired/i)).toBeInTheDocument();
+    });
+
+    describe('length-agnostic code entry', () => {
+        const toCodeStep = async () => {
+            mockAuth.sendEmailCode.mockResolvedValue({});
+            mockAuth.verifyEmailCode.mockResolvedValue({});
+            render(<Harness />);
+            fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'me@x.com' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+            return screen.findByLabelText('Sign-in code');
+        };
+
+        test('8-digit paste auto-submits the full code', async () => {
+            await toCodeStep();
+            typeCode('12345678');
+            await waitFor(() => expect(mockAuth.verifyEmailCode).toHaveBeenCalledWith('me@x.com', '12345678'));
+            expect(mockAuth.verifyEmailCode).toHaveBeenCalledTimes(1);
+        });
+
+        test('typed 6 digits do not auto-submit; Enter submits', async () => {
+            const input = await toCodeStep();
+            fireEvent.change(input, { target: { value: '654321' } });
+            expect(input).toHaveValue('654321');
+            expect(mockAuth.verifyEmailCode).not.toHaveBeenCalled();
+            fireEvent.keyDown(input, { key: 'Enter' });
+            await waitFor(() => expect(mockAuth.verifyEmailCode).toHaveBeenCalledWith('me@x.com', '654321'));
+        });
+
+        test('5 digits keeps Verify disabled; 6 enables it', async () => {
+            const input = await toCodeStep();
+            fireEvent.change(input, { target: { value: '12345' } });
+            expect(screen.getByRole('button', { name: /verify & sign in/i })).toBeDisabled();
+            fireEvent.keyDown(input, { key: 'Enter' });
+            expect(mockAuth.verifyEmailCode).not.toHaveBeenCalled();
+            fireEvent.change(input, { target: { value: '123456' } });
+            expect(screen.getByRole('button', { name: /verify & sign in/i })).toBeEnabled();
+        });
+
+        test('non-digits are stripped on input and paste', async () => {
+            const input = await toCodeStep();
+            fireEvent.change(input, { target: { value: '12a-3 4' } });
+            expect(input).toHaveValue('1234');
+            typeCode('12 34-56 78');
+            await waitFor(() => expect(mockAuth.verifyEmailCode).toHaveBeenCalledWith('me@x.com', '12345678'));
+        });
     });
 
     describe('send-code error mapping', () => {

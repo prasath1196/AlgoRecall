@@ -1,65 +1,43 @@
-import React, { useRef } from 'react';
+import React from 'react';
 
-const LEN = 6;
+export const MIN_CODE_LEN = 6;
+export const MAX_CODE_LEN = 10;
 
-const CodeInput = ({ value, onChange, onComplete, disabled, hasError }) => {
-    const refs = useRef([]);
-    const digits = Array.from({ length: LEN }, (_, i) => value[i] || '');
-
-    const focusAt = (i) => { const el = refs.current[Math.max(0, Math.min(LEN - 1, i))]; if (el) el.focus(); };
-
-    const commit = (next) => {
-        onChange(next);
-        if (next.length === LEN && onComplete) onComplete(next);
-    };
-
-    const handleChange = (i, e) => {
-        const typed = e.target.value.replace(/\D/g, '');
-        if (!typed) return;
-        // Typing (or autofill) of one or more digits starting at slot i
-        const next = (value.slice(0, i) + typed).slice(0, LEN);
-        commit(next);
-        focusAt(Math.min(next.length, LEN - 1));
-    };
-
-    const handleKeyDown = (i, e) => {
-        if (e.key === 'Backspace') {
-            e.preventDefault();
-            if (digits[i]) commit(value.slice(0, i) + value.slice(i + 1));
-            else if (i > 0) { commit(value.slice(0, i - 1) + value.slice(i)); focusAt(i - 1); }
-        } else if (e.key === 'ArrowLeft') { e.preventDefault(); focusAt(i - 1); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); focusAt(i + 1); }
-    };
+// Supabase OTP length is configurable (6-10 digits), so this is a single length-agnostic input.
+// Typing never auto-submits (length unknown); pasting a complete 6-10 digit code calls onComplete.
+const CodeInput = ({ value, onChange, onComplete, onSubmit, disabled, hasError }) => {
+    const clean = (s) => (s || '').replace(/\D/g, '').slice(0, MAX_CODE_LEN);
 
     const handlePaste = (e) => {
-        const text = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, LEN);
+        const raw = e.clipboardData?.getData('text') || '';
+        const text = clean(raw);
         if (!text) return;
         e.preventDefault();
-        commit(text);
-        focusAt(Math.min(text.length, LEN - 1));
+        onChange(text);
+        if (text.length >= MIN_CODE_LEN && onComplete) onComplete(text);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && onSubmit) { e.preventDefault(); onSubmit(); }
     };
 
     return (
-        <div role="group" aria-label="6-digit verification code" className="flex gap-2 justify-center">
-            {digits.map((d, i) => (
-                <input
-                    key={i}
-                    ref={(el) => { refs.current[i] = el; }}
-                    value={d}
-                    onChange={(e) => handleChange(i, e)}
-                    onKeyDown={(e) => handleKeyDown(i, e)}
-                    onPaste={handlePaste}
-                    onFocus={(e) => e.target.select()}
-                    inputMode="numeric"
-                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                    maxLength={LEN}
-                    disabled={disabled}
-                    aria-label={`Digit ${i + 1} of ${LEN}`}
-                    aria-invalid={hasError || undefined}
-                    className={`w-11 h-14 text-center text-xl font-mono bg-gray-950 border rounded-lg text-white outline-none transition-colors focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${hasError ? 'border-red-500/60' : 'border-gray-700'}`}
-                />
-            ))}
-        </div>
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(clean(e.target.value))}
+            onPaste={handlePaste}
+            onKeyDown={handleKeyDown}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={MAX_CODE_LEN}
+            disabled={disabled}
+            aria-label="Sign-in code"
+            aria-invalid={hasError || undefined}
+            placeholder="Enter code"
+            className={`w-full h-14 text-center text-2xl tracking-[0.4em] font-mono bg-gray-950 border rounded-lg text-white placeholder:text-base placeholder:tracking-normal placeholder:text-gray-600 outline-none transition-colors focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 ${hasError ? 'border-red-500/60' : 'border-gray-700'}`}
+        />
     );
 };
 

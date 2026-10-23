@@ -80,7 +80,7 @@ const AccountPanel = ({ isOpen, onClose, status, setStatus, refresh }) => {
 
     const verify = async (value) => {
         const token = value || code;
-        if (token.length !== 6 || busy) return;
+        if (!/^\d{6,10}$/.test(token) || busy) return;
         setBusy(true); setError('');
         try {
             const auth = await loadAuth();
@@ -200,10 +200,10 @@ const AccountPanel = ({ isOpen, onClose, status, setStatus, refresh }) => {
                             ) : (
                                 <div className="space-y-4">
                                     <p className="text-sm text-gray-400 text-center">
-                                        We sent a 6-digit code to <span className="text-white font-medium">{email.trim()}</span>.
+                                        We sent a sign-in code to <span className="text-white font-medium">{email.trim()}</span>.
                                     </p>
-                                    <CodeInput value={code} onChange={setCode} onComplete={verify} disabled={busy} hasError={!!error} />
-                                    <button type="button" onClick={() => verify()} disabled={busy || code.length !== 6} className={primaryBtn}>
+                                    <CodeInput value={code} onChange={setCode} onComplete={verify} onSubmit={() => verify()} disabled={busy} hasError={!!error} />
+                                    <button type="button" onClick={() => verify()} disabled={busy || code.length < 6 || code.length > 10} className={primaryBtn}>
                                         {busy ? (<><RefreshIcon size={16} className="ar-spin" /> Verifying…</>) : 'Verify & sign in'}
                                     </button>
                                     <div className="flex items-center justify-between text-xs">
