@@ -45,6 +45,22 @@
         "content.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://*.leetcode.com/*",
+        "*://*.hackerrank.com/*",
+        "*://*.codeforces.com/*",
+        "*://*.takeuforward.org/*",
+        "*://takeuforward.org/*",
+        "*://*.neetcode.io/*",
+        "*://neetcode.io/*"
+      ],
+      "js": [
+        "injected.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   "action": {

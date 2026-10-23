@@ -315,13 +315,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // --- INJECTION & INTERCEPTION ---
 
-// Inject the fetch interceptor
-const s = document.createElement('script');
-s.src = chrome.runtime.getURL('injected.js');
-s.onload = function () {
-  this.remove();
-};
-(document.head || document.documentElement).appendChild(s);
+// The interceptor (injected.js) is declared as a MAIN-world content script in manifest.json.
+// Fallback: if it did not run (e.g. older browser), inject it via a script tag after DOMContentLoaded.
+function acDebug(...args) {
+  try {
+    if (window.localStorage.getItem('algorecall_debug') === '1') console.log('AlgoRecall:', ...args);
+  } catch (e) { /* ignore */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Content scripts run in an isolated world, so detect the MAIN-world flag via a DOM attribute-free check:
+  // the MAIN-world script also posts a handshake message.
+  setTimeout(() => {
+    if (window.__algorecallInterceptorSeen) return;
+    acDebug('interceptor handshake missing, injecting fallback script');
+    const s = document.createElement('script');
+    s.src = chrome.runtime.getURL('injected.js');
+    s.onload = function () { this.remove(); };
+    (document.head || document.documentElement).appendChild(s);
+  }, 0);
+});
+
+let lastPayloadKey = null;
+let lastPayloadAt = 0;
 
 // Listen for messages from the injected script
 window.addEventListener('message', (event) => {
@@ -330,9 +346,24 @@ window.addEventListener('message', (event) => {
     return;
   }
 
+  if (event.data.type === 'INTERCEPTOR_READY') {
+    window.__algorecallInterceptorSeen = true;
+    return;
+  }
+
   if (event.data.type === 'SUBMISSION_PAYLOAD') {
-    const { typed_code, lang, timestamp, ai_summary } = event.data.payload;
-    console.log('AlgoRecall: Received intercepted code', lang);
+    const { typed_code, lang, timestamp, ai_summary, question_id } = event.data.payload;
+    acDebug('received intercepted code', lang);
+
+    // Dedupe: ignore duplicate payloads for the same question within 5s
+    const dedupeKey = String(question_id ?? location.pathname);
+    const nowTs = Date.now();
+    if (lastPayloadKey === dedupeKey && nowTs - lastPayloadAt < 5000) {
+      acDebug('duplicate submission ignored', dedupeKey);
+      return;
+    }
+    lastPayloadKey = dedupeKey;
+    lastPayloadAt = nowTs;
 
     // Add a small delay to allow DOM to settle if needed (usually fetch happens at click, DOM might not change yet)
     // But we scrape Title/Tags which are static usually.
