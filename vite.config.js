@@ -9,7 +9,6 @@ export default defineConfig({
             input: {
                 dashboard: resolve(__dirname, 'src/dashboard/index.html'),
                 popup: resolve(__dirname, 'popup.html'), // Keeping original popup if simpler, or move to src
-                background: resolve(__dirname, 'background.js'),
                 content: resolve(__dirname, 'content.js'),
                 injected: resolve(__dirname, 'src/injected.js')
             },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { Brain, Plus, LogOut, Settings } from 'lucide-react';
 
 import QueueView from './components/QueueView';
@@ -9,8 +9,13 @@ import AddProblemModal from './components/AddProblemModal';
 import SettingsModal from './SettingsModal';
 import Toast from './Toast';
 import { useProblems } from './hooks/useProblems';
+import SyncIndicator from './sync/SyncIndicator';
+import AccountPanel from './sync/AccountPanel';
+import InsightsSection from './sync/Insights';
+import { useSyncStatus } from './sync/useSyncStatus';
+import { onRuntimeMessage } from './sync/syncApi';
 
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 
 // Wrapped App to use Query Context
 const Dashboard = () => {
@@ -25,6 +30,10 @@ const Dashboard = () => {
 
     const [editingProblem, setEditingProblem] = useState(null);
 
+    const queryClient = useQueryClient();
+    const [showAccount, setShowAccount] = useState(false);
+    const { status: syncStatus, setStatus: setSyncStatus, refresh: refreshSync } = useSyncStatus();
+
     // Custom Hook
     const { problems, isLoading, saveProblem, deleteProblem } = useProblems();
 
@@ -38,6 +47,22 @@ const Dashboard = () => {
     // Toast State
     const [toast, setToast] = useState({ message: '', type: 'info', isVisible: false });
     const showToast = (message, type = 'info') => setToast({ message, type, isVisible: true });
+
+    // Live updates from other devices / background sync
+    useEffect(() => {
+        return onRuntimeMessage((msg) => {
+            if (!msg) return;
+            if (msg.type === 'PROBLEMS_CHANGED') {
+                queryClient.invalidateQueries({ queryKey: ['problems'] });
+                queryClient.invalidateQueries({ queryKey: ['stats'] });
+                if (typeof msg.count === 'number' && msg.count > 0) {
+                    showToast(`Synced ${msg.count} change${msg.count === 1 ? '' : 's'} from another device`, 'success');
+                }
+            } else if (msg.type === 'SYNC_STATUS_CHANGED' && msg.status && msg.status.state === 'idle') {
+                queryClient.invalidateQueries({ queryKey: ['stats'] });
+            }
+        });
+    }, [queryClient]);
 
     // --- COMPUTED ---
     const todaysReviewCount = problems.reduce((count, p) => {
@@ -126,6 +151,21 @@ const Dashboard = () => {
         }
     };
 
+    // Focus mode: practice problems whose pattern_tag matches any of the given patterns
+    const startFocus = (patterns) => {
+        const wanted = new Set(patterns.map(p => String(p).toLowerCase()));
+        const matches = problems.filter(p => {
+            const tags = Array.isArray(p.pattern_tag) ? p.pattern_tag : [p.pattern_tag];
+            return tags.filter(Boolean).some(t => wanted.has(String(t).toLowerCase()));
+        });
+        if (matches.length === 0) {
+            showToast('No saved problems match those patterns yet', 'info');
+            return;
+        }
+        setReviewQueue(matches.map(p => p.url));
+        setIsReviewing(true);
+    };
+
     if (isReviewing) {
         return (
             <ReviewSession
@@ -156,6 +196,7 @@ const Dashboard = () => {
                             <Plus size={16} /> <span className="hidden sm:inline">Add Problem</span>
                         </button>
                         <div className="h-6 w-px bg-gray-800"></div>
+                        <SyncIndicator status={syncStatus} onClick={() => setShowAccount(true)} />
                         <button onClick={() => setShowSettingsModal(true)} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
                             <Settings size={20} />
                         </button>
@@ -190,6 +231,7 @@ const Dashboard = () => {
                 ) : (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {activeTab === 'queue' ? (
+                            <>
                             <QueueView
                                 problems={problems}
                                 maxLimit={maxReviewsPerDay}
@@ -199,6 +241,8 @@ const Dashboard = () => {
                                 onProblemClick={startSingleProblem}
                                 onOpenSettings={() => setShowSettingsModal(true)}
                             />
+                            <InsightsSection onPractice={startFocus} onSignIn={() => setShowAccount(true)} />
+                            </>
                         ) : (
                             <LibraryView
                                 problems={problems}
@@ -218,6 +262,13 @@ const Dashboard = () => {
                 onSave={handleSaveProblem}
                 initialData={editingProblem}
             />
+            <AccountPanel
+                isOpen={showAccount}
+                onClose={() => setShowAccount(false)}
+                status={syncStatus}
+                setStatus={setSyncStatus}
+                refresh={refreshSync}
+            />
             {showSettingsModal && (
                 <SettingsModal
                     isOpen={showSettingsModal}
@@ -233,6 +284,7 @@ const Dashboard = () => {
                 <Toast
                     message={toast.message}
                     type={toast.type}
+                    isVisible={toast.isVisible}
                     onClose={() => setToast(prev => ({ ...prev, isVisible: false }))}
                 />
             )}

@@ -205,6 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    initSyncLine();
+
     document.getElementById('dashboardBtn').addEventListener('click', () => {
         chrome.tabs.create({ url: chrome.runtime.getURL('src/dashboard/index.html') });
     });
@@ -214,3 +216,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+
+// --- STREAK + SYNC LINE (tolerates missing elements / no background response) ---
+function localStreak(problems) {
+    const days = new Set();
+    (problems || []).forEach(p => (p.review_history || []).forEach(h => {
+        if (h && typeof h.date === 'string') days.add(h.date.slice(0, 10));
+    }));
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    const d = new Date();
+    if (!days.has(fmt(d))) d.setUTCDate(d.getUTCDate() - 1);
+    let n = 0;
+    while (days.has(fmt(d))) { n++; d.setUTCDate(d.getUTCDate() - 1); }
+    return n;
+}
+
+function initSyncLine() {
+    const syncLine = document.getElementById('syncLine');
+    const streakLine = document.getElementById('streakLine');
+    if (streakLine) {
+        Promise.resolve()
+            .then(() => getAllProblems())
+            .then(problems => {
+                const n = localStreak(problems);
+                streakLine.textContent = n > 0 ? `\u{1F525} ${n}-day streak` : '';
+            })
+            .catch(() => { });
+    }
+    if (!syncLine) return;
+    const render = (status) => {
+        const state = status && status.state;
+        if (!state || state === 'signed_out') syncLine.textContent = 'Sign in to sync';
+        else if (state === 'syncing') syncLine.textContent = 'Syncing\u2026';
+        else if (state === 'error') syncLine.textContent = 'Sync error';
+        else if (state === 'offline') syncLine.textContent = 'Offline';
+        else syncLine.textContent = 'Synced';
+    };
+    try {
+        const r = chrome.runtime.sendMessage({ type: 'GET_SYNC_STATUS' }, (res) => {
+            try { void chrome.runtime.lastError; } catch (e) { /* ignore */ }
+            render(res && (res.status || res));
+        });
+        if (r && typeof r.then === 'function') r.then(res => render(res && (res.status || res)), () => { });
+    } catch (e) { /* no background */ }
+}

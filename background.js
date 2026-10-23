@@ -1,4 +1,6 @@
-import { saveProblem, openDB, getDueProblemsCount, getProblem } from './db.js';
+import { saveProblem, openDB, getDueProblemsCount, getProblem, setChangeListener } from './db.js';
+import { syncNow, getSyncStatus, scheduleSync, startRealtime, stopRealtime } from './src/sync/sync.js';
+import { getSession, onAuthChange } from './src/sync/auth.js';
 
 // Initialize DB immediately so it shows up in DevTools
 openDB().then(() => console.log('AlgoRecall: DB Initialized')).catch(err => console.error('AlgoRecall: DB Init Failed', err));
@@ -6,6 +8,53 @@ openDB().then(() => console.log('AlgoRecall: DB Initialized')).catch(err => cons
 
 
 import { calculateNextReview } from './src/utils/algorithms.js';
+
+// ---- Cloud sync wiring ----
+const SYNC_ALARM = 'algorecall-sync';
+
+// Local saves/deletes made in the background itself schedule a debounced sync.
+setChangeListener(() => scheduleSync());
+
+function ensureSyncAlarm() {
+    try {
+        chrome.alarms.create(SYNC_ALARM, { periodInMinutes: 5 });
+    } catch (e) { console.error('AlgoRecall: alarm create failed', e); }
+}
+
+async function startupSync() {
+    try {
+        const session = await getSession();
+        if (session) {
+            startRealtime().catch(() => {});
+            await syncNow();
+        }
+    } catch (e) { console.error('AlgoRecall: startup sync failed', e); }
+}
+
+chrome.runtime.onInstalled.addListener(() => { ensureSyncAlarm(); });
+chrome.runtime.onStartup.addListener(() => { ensureSyncAlarm(); startupSync(); });
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name !== SYNC_ALARM) return;
+    // Alarm wakes a suspended worker: re-establish realtime and sync.
+    startupSync();
+});
+
+onAuthChange((event) => {
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        startRealtime().catch(() => {});
+    } else if (event === 'SIGNED_OUT') {
+        stopRealtime();
+        getSyncStatus().then(status => {
+            try {
+                const p = chrome.runtime.sendMessage({ type: 'SYNC_STATUS_CHANGED', status });
+                if (p && p.catch) p.catch(() => {});
+            } catch (e) { /* ignore */ }
+        });
+    }
+});
+
+// Worker may have been woken by an event rather than onStartup
+startupSync();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'SUBMISSION_DETECTED' || message.type === 'MANUAL_SAVE') {
@@ -27,6 +76,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ status: 'error', error: error.toString() });
         });
         return true;
+    }
+
+    if (message.type === 'SYNC_NOW') {
+        startRealtime().catch(() => {});
+        syncNow({ full: !!message.full })
+            .then(() => getSyncStatus())
+            .then(status => sendResponse({ status }))
+            .catch(err => sendResponse({ status: { state: 'error', error: String(err), lastSyncedAt: null, email: null } }));
+        return true;
+    }
+
+    if (message.type === 'GET_SYNC_STATUS') {
+        getSyncStatus().then(sendResponse).catch(err => sendResponse({ state: 'error', error: String(err), lastSyncedAt: null, email: null }));
+        return true;
+    }
+
+    if (message.type === 'LOCAL_CHANGED') {
+        scheduleSync();
+        sendResponse({ ok: true });
+        return false;
     }
 
     if (message.type === 'CHECK_DUE_REVIEWS') {

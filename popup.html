@@ -19,6 +19,12 @@
         <div id="status" class="text-[10px] font-mono opacity-0 transition-opacity duration-300 bg-green-900/30 text-green-400 px-2 py-0.5 rounded border border-green-800"></div>
     </div>
 
+    <!-- Streak + sync line -->
+    <div class="flex items-center justify-between mb-3 text-[10px] text-gray-500">
+        <span id="streakLine" class="flex items-center gap-1" aria-label="Current streak"></span>
+        <span id="syncLine" role="status" aria-live="polite" class="flex items-center gap-1">Sign in to sync</span>
+    </div>
+
     <!-- Dashboard Button (Moved to Top) -->
     <button id="dashboardBtn" class="w-full mb-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-indigo-400 hover:text-indigo-300 font-medium rounded-lg transition-all border border-gray-800 active:scale-[0.98] text-[11px] flex items-center justify-center gap-2 uppercase tracking-wide">
         <span>Open Recall Queue</span>

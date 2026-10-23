@@ -1,0 +1,12 @@
+@keyframes ar-spin { to { transform: rotate(360deg); } }
+@keyframes ar-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18) rotate(-4deg); } 100% { transform: scale(1); } }
+@keyframes ar-glow { 0%,100% { box-shadow: 0 0 0 0 rgba(251,146,60,0.0); } 50% { box-shadow: 0 0 24px 2px rgba(251,146,60,0.35); } }
+@keyframes ar-confetti { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-28px) scale(0.4); } }
+.ar-spin { animation: ar-spin 1s linear infinite; transform-origin: center; }
+.ar-pop { animation: ar-pop 0.9s ease-out 2; }
+.ar-glow { animation: ar-glow 2s ease-in-out 3; }
+.ar-spark { position: absolute; width: 6px; height: 6px; border-radius: 9999px; animation: ar-confetti 1.2s ease-out 1 forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .ar-spin, .ar-pop, .ar-glow, .ar-spark { animation: none !important; }
+  .ar-spark { display: none; }
+}

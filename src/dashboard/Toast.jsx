@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { X } from 'lucide-react';
+import { CheckCircleIcon as CheckCircle2, AlertIcon as AlertTriangle, InfoIcon as Info } from './sync/icons';
 
 const Toast = ({ message, type = 'info', isVisible, onClose, duration = 3000 }) => {
     const [show, setShow] = useState(false);

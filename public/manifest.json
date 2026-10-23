@@ -10,7 +10,7 @@
   },
   "permissions": [
     "activeTab",
-    "activeTab",
+    "alarms",
     "scripting",
     "storage"
   ],
@@ -21,7 +21,8 @@
     "*://*.takeuforward.org/*",
     "*://takeuforward.org/*",
     "*://*.neetcode.io/*",
-    "*://neetcode.io/*"
+    "*://neetcode.io/*",
+    "https://xqzgcvayyzuvbtlcgibe.supabase.co/*"
   ],
   "background": {
     "service_worker": "background.js",
