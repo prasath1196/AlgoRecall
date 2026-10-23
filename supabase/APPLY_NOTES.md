@@ -42,3 +42,32 @@ init_updated_at_function recorded it.
   https://supabase.com/docs/guides/realtime/postgres-changes ,
   https://supabase.com/docs/guides/troubleshooting/realtime-postgres-changes-troubleshooting
 - Supabase MCP Server (tool list; no documented apply_migration timeout limits): https://supabase.com/docs/guides/ai-tools/mcp
+
+# Wave 2 (features) - applied to xqzgcvayyzuvbtlcgibe
+
+## Migrations applied (MCP), in order
+features_profile_columns (username/is_public/weekly_recap/email); features_profile_constraints (username format check + unique);
+features_profile_grants (column-level UPDATE grant on profiles: display_name, timezone, username, is_public, weekly_recap; `email` is NOT client-writable);
+features_hint_usage (table + RLS select-own, no client writes); features_stats_for (`public._stats_for(uuid, tz)`, security definer, execute revoked from public/anon/authenticated; service_role keeps it);
+features_set_profile (set_profile + get_my_profile); features_get_public_profile; features_grants; features_new_user_email (handle_new_user copies email + backfill);
+weekly_cron_extensions (pg_cron, pg_net); weekly_cron_schedule (job `weekly-recap`, `0 14 * * 1`).
+- The first attempt, one combined apply_migration with columns+constraints+grants+table, timed out at 60s and rolled back fully (verified with execute_sql); splitting into small chunks worked.
+- Repo files: `migrations/20261023010000_features.sql` and `migrations/20261023020000_weekly_cron.sql` mirror what was applied (semantically identical, but combined into single files).
+- set_profile semantics: `p_username` null = keep, '' = clear; null booleans = keep; is_public=true requires a username (`invalid_username`).
+
+## Edge functions
+- `weekly-recap` deployed (verify_jwt=false, x-cron-secret vs CRON_SECRET): https://xqzgcvayyzuvbtlcgibe.supabase.co/functions/v1/weekly-recap
+  Uses Brevo template when BREVO_RECAP_TEMPLATE_ID is set (params per docs/brevo-templates.md), else inline HTML (needs RECAP_SENDER_EMAIL).
+- `hint`: NOT written or deployed (decision: no AI features for now). `hint_usage` table kept. No ANTHROPIC_API_KEY requested.
+
+## Manual steps for the owner
+1. Edge function secrets (Dashboard > Edge Functions > Secrets): BREVO_API_KEY, CRON_SECRET (random string), BREVO_RECAP_TEMPLATE_ID=1, RECAP_SENDER_EMAIL=prasath1196@gmail.com (only used by fallback).
+   The create_edge_function_secret MCP calls timed out waiting for dashboard entry; they may still be pending.
+2. Vault secret with the SAME value as CRON_SECRET (SQL editor): `select vault.create_secret('<same value>', 'cron_secret');`
+   Until it exists the weekly job sends an empty header and gets 401.
+3. Test: `curl -X POST -H "x-cron-secret: <value>" https://xqzgcvayyzuvbtlcgibe.supabase.co/functions/v1/weekly-recap`
+
+## Verification / advisors
+- get_public_profile('nobody') as anon in a rolled-back txn -> null. _stats_for not executable by anon/authenticated.
+- Security advisors: WARN anon/authenticated_security_definer_function_executable on get_public_profile (intentional: the only anon path);
+  WARN auth_leaked_password_protection (pre-existing dashboard setting, not ours). Performance: only the 2 INFO unused_index from wave 1.
